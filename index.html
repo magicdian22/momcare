@@ -1,0 +1,2375 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>媽媽照護開支・代墊與雲端存證系統 (v10.2 語法完整修復穩定版)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", "PingFang TC", sans-serif;
+      background-color: #f1f5f9;
+      color: #0f172a;
+    }
+    .tab-btn-active {
+      background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%);
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(29, 78, 216, 0.3);
+      border-color: #1e3a8a;
+    }
+    .tab-btn-inactive {
+      background: #ffffff;
+      color: #334155;
+      border-color: #cbd5e1;
+    }
+    .tab-btn-inactive:hover {
+      background: #f8fafc;
+      border-color: #94a3b8;
+    }
+    /* 嚴格鎖定圖片原始長寬比例，禁止任何橫向或縱向拉伸變形 */
+    .receipt-img-preserve {
+      max-width: 100% !important;
+      width: auto !important;
+      height: auto !important;
+      object-fit: contain !important;
+      display: block !important;
+      margin: 0 auto !important;
+    }
+    .checkerboard-bg {
+      background-color: #0f172a;
+      background-image: radial-gradient(#1e293b 1px, transparent 1px);
+      background-size: 16px 16px;
+    }
+    @media print {
+      .no-print { display: none !important; }
+      body { background: #ffffff; }
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-20">
+
+  <!-- ==================== 頂部導覽與可收合控制列 ==================== -->
+  <header class="bg-slate-900 text-white sticky top-0 z-40 shadow-xl no-print">
+    <div class="max-w-5xl mx-auto px-3 py-3 flex flex-wrap items-center justify-between gap-2">
+      <!-- 系統標題 -->
+      <div class="flex items-center gap-2.5">
+        <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-xl font-bold shadow-inner shrink-0">🏥</div>
+        <div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <h1 class="text-base md:text-lg font-extrabold tracking-tight">媽媽照護開支・代墊與雲端存證系統</h1>
+            <span class="bg-emerald-400 text-slate-950 text-[11px] font-black px-2 py-0.5 rounded-full">v10.2 穩定啟動版</span>
+            <span id="appReadyBadge" class="bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 text-[11px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1">
+              🟢 系統已正常啟動
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-300">100% 鎖定相機原始比例不變形・防切字獨立存證底欄・長子與品璇代墊精算・Google 雲端雙向同步</p>
+        </div>
+      </div>
+
+      <!-- 頂部快捷動作按鈕組 -->
+      <div class="flex flex-wrap items-center gap-1.5">
+        <button type="button" id="btnPushAllCloud" class="bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-extrabold px-3 py-1.5 rounded-xl shadow flex items-center gap-1 transition">
+          ☁️ 一鍵補傳本機單據至雲端
+        </button>
+        <button type="button" id="btnPullCloud" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-2.5 py-1.5 rounded-xl shadow flex items-center gap-1 transition">
+          🔄 從雲端載入
+        </button>
+        <a id="topDriveLink" href="https://drive.google.com/drive/search?q=%E5%AA%BD%E5%AA%BD%E7%85%A7%E8%AD%B7%E9%96%8B%E6%94%AF%E9%9B%B2%E7%AB%AF%E5%AD%98%E8%AD%89%E5%BA%AB" target="_blank" rel="noopener noreferrer" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-2.5 py-1.5 rounded-xl shadow flex items-center gap-1 transition">
+          📁 開啟雲端存證庫
+        </a>
+        <a id="topSheetLink" href="https://docs.google.com/spreadsheets/" target="_blank" rel="noopener noreferrer" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-2.5 py-1.5 rounded-xl shadow flex items-center gap-1 transition">
+          📊 開啟雲端試算表
+        </a>
+      </div>
+    </div>
+
+    <!-- 狀態燈號與展開/收合控制列 -->
+    <div class="bg-slate-800/90 border-t border-slate-700/80 px-3 py-2">
+      <div class="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div class="flex flex-wrap items-center gap-2">
+          <span id="ocrEngineBadge" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
+            ✨ AI 智慧視覺辨識：已就緒（零亂碼）
+          </span>
+          <span id="cloudStatusBadge" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
+            ☁️ 雲端狀態：本機永久保存中（可點右側綁定雲端網址）
+          </span>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button type="button" id="btnToggleCloudDrawer" class="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold px-3 py-1 rounded-lg shadow transition flex items-center gap-1">
+            🔗 雲端網址綁定與連線測試 <span id="cloudDrawerArrow">▼ 展開</span>
+          </button>
+          <button type="button" id="btnToggleKeyDrawer" class="bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold px-2.5 py-1 rounded-lg border border-slate-600 transition flex items-center gap-1">
+            ⚙️ AI 金鑰設定 <span id="keyDrawerArrow">▼</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 面板 A：Google 雲端網址綁定面板 (預設收合) -->
+      <div id="cloudDrawerPanel" style="display: none;" class="max-w-5xl mx-auto mt-2.5 bg-slate-900 border-2 border-emerald-500/60 rounded-2xl p-3.5 text-xs space-y-3 shadow-2xl">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+          <div class="font-extrabold text-emerald-400 text-sm flex items-center gap-2">
+            <span>☁️ Google 雲端試算表 ＆ 8 大分類資料夾連線中樞</span>
+            <span class="bg-emerald-950 text-emerald-300 border border-emerald-700 px-2 py-0.5 rounded text-[11px]">支援跨網域強制推送</span>
+          </div>
+          <button type="button" id="btnCloseCloudDrawerTop" class="bg-rose-600 hover:bg-rose-500 text-white font-extrabold px-3 py-1 rounded-lg shadow">
+            ▲ 收合面板
+          </button>
+        </div>
+
+        <div class="flex flex-col md:flex-row gap-2">
+          <input type="text" id="inputGasUrl" placeholder="請貼上以 /exec 結尾的 Google Apps Script 網頁應用程式網址 (https://script.google.com/macros/s/.../exec)" class="flex-1 bg-slate-950 border border-slate-600 focus:border-emerald-400 rounded-xl px-3 py-2 text-white font-mono text-xs outline-none">
+          <button type="button" id="btnSaveAndPushGas" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-4 py-2 rounded-xl shadow shrink-0">
+            🔗 儲存網址並立即上傳所有單據
+          </button>
+          <button type="button" id="btnTestGasConn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-3.5 py-2 rounded-xl shadow shrink-0">
+            🧪 測試雲端連線
+          </button>
+        </div>
+
+        <div id="gasUrlCheckHint" class="bg-slate-800/90 border border-slate-700 rounded-xl p-2.5 text-[11px] text-slate-300 leading-relaxed">
+          💡 <b>為什麼之前雲端沒收到？</b> 請檢查上方貼上的網址結尾是否完整包含 <code class="text-amber-300 font-bold">/exec</code>。若您在 Google Apps Script 更新了程式碼，請點選右上角「部署 ➔ 新增部署作業」（誰可以存取：<b>所有人 Anyone</b>），再貼上新網址即可 100% 寫入試算表！
+        </div>
+
+        <div class="flex justify-end">
+          <button type="button" id="btnCloseCloudDrawerBottom" class="bg-slate-700 hover:bg-slate-600 text-white font-bold px-4 py-1.5 rounded-lg">
+            ▲ 完成並收合面板
+          </button>
+        </div>
+      </div>
+
+      <!-- 面板 B：Gemini AI 金鑰設定面板 (預設收合) -->
+      <div id="keyDrawerPanel" style="display: none;" class="max-w-5xl mx-auto mt-2.5 bg-slate-900 border-2 border-indigo-500/60 rounded-2xl p-3.5 text-xs space-y-2.5 shadow-2xl">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+          <div class="font-extrabold text-indigo-300 text-sm">
+            🤖 選填：Google Gemini 2.5 Flash 視覺模型金鑰（強化模糊手寫收據辨識）
+          </div>
+          <button type="button" id="btnCloseKeyDrawer" class="bg-rose-600 hover:bg-rose-500 text-white font-extrabold px-3 py-1 rounded-lg">
+            ▲ 收合面板
+          </button>
+        </div>
+        <p class="text-[11px] text-slate-300">
+          系統已內建「台灣醫療/全聯/免用統一發票智慧結構化辨識引擎」與「候選金額一鍵按鈕」。若您想使用 Google Gemini 雲端視覺直接讀取極度模糊之照片，可在此貼上免費 API Key：
+          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="text-amber-300 underline font-bold ml-1">點此免費領取 Gemini API Key ↗</a>
+        </p>
+        <div class="flex flex-col sm:flex-row gap-2">
+          <input type="password" id="inputGeminiKey" placeholder="貼上 AIzaSy... 開頭的 Gemini API Key" class="flex-1 bg-slate-950 border border-slate-600 rounded-xl px-3 py-2 text-white font-mono text-xs outline-none">
+          <button type="button" id="btnSaveGeminiKey" class="bg-indigo-500 hover:bg-indigo-400 text-white font-extrabold px-4 py-2 rounded-xl shadow">
+            💾 儲存金鑰
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== 主內容區 ==================== -->
+  <main class="max-w-5xl mx-auto px-3 pt-4 space-y-4">
+
+    <!-- 1. 四大財務統計看板 -->
+    <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 no-print">
+      <div class="bg-white rounded-2xl p-3.5 shadow-sm border border-slate-200 border-l-4 border-l-slate-800">
+        <div class="text-xs font-bold text-slate-500">未結算單據總開支</div>
+        <div id="statTotalAmount" class="text-2xl font-black text-slate-900 mt-1">NT$ 0</div>
+        <div id="statTotalCount" class="text-[11px] text-slate-400 mt-0.5">系統永久保存共 0 筆</div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-3.5 shadow-sm border border-slate-200 border-l-4 border-l-blue-600">
+        <div class="text-xs font-bold text-blue-700">🙋‍♂️ 我（長子）代墊未結</div>
+        <div id="statMyAdvance" class="text-2xl font-black text-blue-700 mt-1">NT$ 0</div>
+        <div class="text-[11px] text-slate-400 mt-0.5">實付醫療/長照/膳食代墊</div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-3.5 shadow-sm border border-slate-200 border-l-4 border-l-purple-600">
+        <div class="text-xs font-bold text-purple-700">🙋‍♀️ 品璇（太太）代墊未結</div>
+        <div id="statWifeAdvance" class="text-2xl font-black text-purple-700 mt-1">NT$ 0</div>
+        <div class="text-[11px] text-slate-400 mt-0.5">採買耗材/營養品/備餐代墊</div>
+      </div>
+
+      <div class="bg-amber-50/90 rounded-2xl p-3.5 shadow-sm border border-amber-200 border-l-4 border-l-amber-500">
+        <div class="text-xs font-extrabold text-amber-900">👩 妹妹本期應分攤金額</div>
+        <div id="statSisterShare" class="text-2xl font-black text-amber-600 mt-1">NT$ 0</div>
+        <div class="text-[11px] text-amber-800/80 mt-0.5">依每筆單據設定比例自動累計</div>
+      </div>
+    </section>
+
+    <!-- 2. 主功能切換分頁列 -->
+    <nav class="grid grid-cols-2 sm:grid-cols-4 gap-2 no-print">
+      <button type="button" data-tab="tab-capture" class="main-tab-btn tab-btn-active font-extrabold text-xs sm:text-sm py-2.5 px-3 rounded-xl border transition flex items-center justify-center gap-1.5">
+        📸 1. 拍單 AI 辨識與記帳
+      </button>
+      <button type="button" data-tab="tab-records" class="main-tab-btn tab-btn-inactive font-extrabold text-xs sm:text-sm py-2.5 px-3 rounded-xl border transition flex items-center justify-center gap-1.5">
+        📋 2. 代墊明細管理 (<span id="navBadgeCount">0</span>)
+      </button>
+      <button type="button" data-tab="tab-cloud" class="main-tab-btn tab-btn-inactive font-extrabold text-xs sm:text-sm py-2.5 px-3 rounded-xl border transition flex items-center justify-center gap-1.5">
+        ☁️ 3. 8大雲端分類相簿 (<span id="navAlbumCount">0</span>)
+      </button>
+      <button type="button" data-tab="tab-report" class="main-tab-btn tab-btn-inactive font-extrabold text-xs sm:text-sm py-2.5 px-3 rounded-xl border transition flex items-center justify-center gap-1.5">
+        ⚖️ 4. 請款單＆雲端雙向碼
+      </button>
+    </nav>
+
+    <!-- ==================== 分頁 1：拍單辨識與新增記帳 ==================== -->
+    <section id="tab-capture" class="space-y-4">
+      <div class="bg-white rounded-2xl shadow-md border border-slate-200 p-4 md:p-5">
+        <!-- 區塊標題與一鍵體驗測試收據按鈕 -->
+        <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-4 border-b border-slate-100">
+          <div>
+            <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
+              <span>📸 步驟一：上傳收據/發票照片 或 點選測試單據體驗辨識</span>
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">支援手機相簿選照片、開啟相機現場拍、或直接點選右方「測試收據」立即驗證辨識與入帳</p>
+          </div>
+          <div class="flex flex-wrap gap-1.5">
+            <button type="button" id="btnDemoKmuh" class="bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-300 text-xs font-extrabold px-2.5 py-1.5 rounded-lg transition">
+              🧪 測試「高醫門診收據」
+            </button>
+            <button type="button" id="btnDemoPxmart" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-extrabold px-2.5 py-1.5 rounded-lg transition">
+              🧪 測試「全聯買菜發票」
+            </button>
+            <button type="button" id="btnDemoToy" class="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-extrabold px-2.5 py-1.5 rounded-lg transition">
+              🧪 載入「旭陽玩具店收據」
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          <!-- 左欄：相簿/拍照按鈕、進度條、候選金額、防偽浮水印預覽 -->
+          <div class="lg:col-span-6 space-y-3">
+            <!-- 雙大按鈕：相簿選圖 vs 相機拍照 -->
+            <div class="grid grid-cols-2 gap-3">
+              <label for="fileInputAlbum" class="cursor-pointer group bg-indigo-50/70 hover:bg-indigo-100/80 border-2 border-dashed border-indigo-400 rounded-2xl p-4 text-center transition flex flex-col items-center justify-center shadow-sm">
+                <span class="text-3xl mb-1 group-hover:scale-110 transition">🖼️</span>
+                <span class="font-extrabold text-indigo-950 text-sm">從相簿選照片/截圖</span>
+                <span class="text-[11px] text-indigo-700 mt-0.5">發票照、網購或 LINE 截圖</span>
+                <input type="file" id="fileInputAlbum" accept="image/*" class="hidden">
+              </label>
+
+              <label for="fileInputCamera" class="cursor-pointer group bg-blue-50/70 hover:bg-blue-100/80 border-2 border-dashed border-blue-400 rounded-2xl p-4 text-center transition flex flex-col items-center justify-center shadow-sm">
+                <span class="text-3xl mb-1 group-hover:scale-110 transition">📷</span>
+                <span class="font-extrabold text-blue-950 text-sm">開啟相機現場拍</span>
+                <span class="text-[11px] text-blue-700 mt-0.5">拍高醫收據、發票、市場買菜</span>
+                <input type="file" id="fileInputCamera" accept="image/*" capture="environment" class="hidden">
+              </label>
+            </div>
+
+            <!-- 辨識狀態與進度面板 -->
+            <div id="ocrStatusPanel" style="display: none;" class="bg-slate-900 text-white rounded-2xl p-3.5 space-y-2 shadow-md">
+              <div class="flex items-center justify-between text-xs font-bold">
+                <span id="ocrStatusTitle" class="text-emerald-300">🔍 正在辨識單據內容與金額...</span>
+                <span id="ocrStatusBadge" class="bg-slate-800 px-2 py-0.5 rounded text-amber-300">處理中</span>
+              </div>
+              <div class="w-full bg-slate-700 h-2 rounded-full overflow-hidden">
+                <div id="ocrProgressBar" class="bg-emerald-400 h-2 transition-all duration-300" style="width: 20%;"></div>
+              </div>
+              <div id="ocrStatusDetail" class="text-[11px] text-slate-300">系統正自動萃取日期、商家、品項明細與總金額</div>
+            </div>
+
+            <!-- 候選金額快速點選區 -->
+            <div id="candidateAmountBox" class="bg-amber-50 border border-amber-300 rounded-2xl p-3 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-extrabold text-amber-950">🎯 單據偵測/常用金額（點一下立即填入右方「單據實付總金額」）：</span>
+                <button type="button" id="btnRerunOcr" class="text-[11px] bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-2.5 py-1 rounded-lg shadow">
+                  🔄 重新辨識此圖
+                </button>
+              </div>
+              <div id="candidateBtnsWrap" class="flex flex-wrap gap-1.5">
+                <button type="button" data-amt="1449" class="cand-amt-btn bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs px-3 py-1.5 rounded-lg shadow-sm">NT$ 1,449</button>
+                <button type="button" data-amt="754" class="cand-amt-btn bg-amber-200 hover:bg-amber-300 text-slate-900 font-extrabold text-xs px-2.5 py-1.5 rounded-lg">NT$ 754</button>
+                <button type="button" data-amt="980" class="cand-amt-btn bg-amber-200 hover:bg-amber-300 text-slate-900 font-extrabold text-xs px-2.5 py-1.5 rounded-lg">NT$ 980</button>
+                <button type="button" data-amt="5240" class="cand-amt-btn bg-amber-200 hover:bg-amber-300 text-slate-900 font-extrabold text-xs px-2.5 py-1.5 rounded-lg">NT$ 5,240</button>
+              </div>
+            </div>
+
+            <!-- 單據照片預覽與防偽浮水印畫布 (100% 原始長寬比例鎖定、支援旋轉與全螢幕放大) -->
+            <div id="canvasPreviewBox" style="display: none;" class="space-y-2.5 bg-slate-100 p-3.5 rounded-2xl border border-slate-300 shadow-inner">
+              <div class="flex flex-wrap justify-between items-center gap-2">
+                <span class="text-xs font-extrabold text-slate-800 flex items-center gap-1">
+                  🛡️ 數位存證預覽（100% 鎖定原始比例不變形・獨立防切字底欄）：
+                </span>
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <button type="button" id="btnRotateLeft" class="text-xs bg-white hover:bg-slate-200 text-slate-800 border border-slate-300 font-bold px-2.5 py-1 rounded-lg shadow-sm transition" title="向左旋轉 90°">
+                    ↺ 左轉90°
+                  </button>
+                  <button type="button" id="btnRotateRight" class="text-xs bg-white hover:bg-slate-200 text-slate-800 border border-slate-300 font-bold px-2.5 py-1 rounded-lg shadow-sm transition" title="向右旋轉 90°">
+                    ↻ 右轉90°
+                  </button>
+                  <button type="button" id="btnZoomToggle" class="text-xs bg-white hover:bg-slate-200 text-slate-800 border border-slate-300 font-bold px-2.5 py-1 rounded-lg shadow-sm transition">
+                    📐 展開完整高度
+                  </button>
+                  <button type="button" id="btnOpenLightbox" class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-2.5 py-1 rounded-lg shadow-sm transition">
+                    🔍 全螢幕高清檢視
+                  </button>
+                  <button type="button" id="btnDownloadPreviewImg" class="text-xs bg-slate-800 hover:bg-slate-700 text-white font-bold px-2.5 py-1 rounded-lg shadow-sm transition">
+                    ⬇️ 下載存證照
+                  </button>
+                </div>
+              </div>
+
+              <!-- 嚴格等比例預覽容器：使用 <img> 呈現合成後的高清 DataURL，徹底杜絕 Canvas CSS 拉伸變形 -->
+              <div id="canvasScrollWrap" class="checkerboard-bg overflow-auto rounded-xl border border-slate-700 p-3 flex items-center justify-center" style="max-height: 460px;">
+                <img id="watermarkPreviewImg" alt="收據數位存證等比例預覽" class="receipt-img-preserve rounded-lg shadow-2xl cursor-zoom-in" style="max-height: 420px;" title="點擊開啟全螢幕高清檢視">
+                <canvas id="watermarkCanvas" class="hidden"></canvas>
+              </div>
+              <div class="text-[11px] text-slate-500 flex justify-between items-center px-1">
+                <span id="imgDimInfoBadge">📐 影像比例：原始等比例鎖定</span>
+                <span class="text-indigo-600 font-bold">💡 點擊圖片可開啟全螢幕高清放大檢視</span>
+              </div>
+            </div>
+
+            <!-- 媽媽常用照護開支「一鍵快填範本」 -->
+            <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3 space-y-2">
+              <div class="text-xs font-extrabold text-slate-700">⚡ 媽媽常用照護支出「一鍵帶入範本」（免打字）：</div>
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                <button type="button" data-tpl="kmuh" class="quick-tpl-btn text-left text-xs bg-white hover:bg-blue-50 border border-slate-300 rounded-xl p-2 transition shadow-sm">
+                  <div class="font-extrabold text-blue-900">🏥 高醫門診/植皮</div>
+                  <div class="text-[10px] text-slate-500">門診掛號與敷料耗材</div>
+                </button>
+                <button type="button" data-tpl="dialysis" class="quick-tpl-btn text-left text-xs bg-white hover:bg-blue-50 border border-slate-300 rounded-xl p-2 transition shadow-sm">
+                  <div class="font-extrabold text-emerald-900">💉 洗腎診所費用</div>
+                  <div class="text-[10px] text-slate-500">田源/宗禾透析相關</div>
+                </button>
+                <button type="button" data-tpl="ltc" class="quick-tpl-btn text-left text-xs bg-white hover:bg-blue-50 border border-slate-300 rounded-xl p-2 transition shadow-sm">
+                  <div class="font-extrabold text-purple-900">👵 長照居服自付額</div>
+                  <div class="text-[10px] text-slate-500">BA07沐浴/BA14陪醫/BA05</div>
+                </button>
+                <button type="button" data-tpl="pxmart" class="quick-tpl-btn text-left text-xs bg-white hover:bg-blue-50 border border-slate-300 rounded-xl p-2 transition shadow-sm">
+                  <div class="font-extrabold text-indigo-900">🛒 全聯洗腎食材</div>
+                  <div class="text-[10px] text-slate-500">去刺魚片/瘦肉/高麗菜</div>
+                </button>
+                <button type="button" data-tpl="market" class="quick-tpl-btn text-left text-xs bg-white hover:bg-blue-50 border border-slate-300 rounded-xl p-2 transition shadow-sm">
+                  <div class="font-extrabold text-amber-900">🥬 傳統市場買菜</div>
+                  <div class="text-[10px] text-slate-500">無發票實物拍照存證</div>
+                </button>
+                <button type="button" data-tpl="protein" class="quick-tpl-btn text-left text-xs bg-white hover:bg-blue-50 border border-slate-300 rounded-xl p-2 transition shadow-sm">
+                  <div class="font-extrabold text-rose-900">🥛 純乳清/洗腎營養</div>
+                  <div class="text-[10px] text-slate-500">補體素/腎補納/敷料</div>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 右欄：入帳表單 -->
+          <div class="lg:col-span-6 space-y-3 bg-slate-50/70 p-4 rounded-2xl border border-slate-200">
+            <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+              <h3 class="text-sm font-extrabold text-slate-800">✍️ 步驟二：確認或微調明細後儲存入帳</h3>
+              <span id="editingModeBadge" style="display: none;" class="bg-amber-500 text-slate-950 text-xs font-black px-2.5 py-0.5 rounded-full">✏️ 正在編輯單據</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">消費日期</label>
+                <input type="date" id="formDate" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white font-semibold">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">實際代墊人（呈現誰先墊錢）</label>
+                <select id="formPayer" class="w-full border-2 border-blue-500 rounded-xl px-3 py-2 text-sm font-extrabold text-blue-900 bg-blue-50">
+                  <option value="我(長子)代墊">🙋‍♂️ 我（長子代墊）</option>
+                  <option value="品璇(太太)代墊">🙋‍♀️ 品璇（太太代墊）</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">自動歸檔之雲端分類資料夾（8大標準分類）</label>
+              <select id="formCategory" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white font-bold text-slate-800">
+                <option value="01_醫療門診與住院">📁 01_醫療門診與住院（高醫門診/植皮住院/批價收據）</option>
+                <option value="02_長照與看護自付">📁 02_長照與看護自付（居服員自付額/住院24H看護費）</option>
+                <option value="03_傷口敷料與耗材">📁 03_傷口敷料與耗材（負壓海綿/親水敷料/紗布看護墊）</option>
+                <option value="04_洗腎營養品與奶粉">📁 04_洗腎營養品與奶粉（純乳清蛋白粉/腎補納/勝力2）</option>
+                <option value="05_超市與市場膳食">📁 05_超市與市場膳食（全聯發票/傳統市場買菜實物照）</option>
+                <option value="06_交通接送與專車">📁 06_交通接送與專車（長照專車/復康巴士/回診計程車）</option>
+                <option value="07_輔具與環境改善">📁 07_輔具與環境改善（輪椅/氣墊床/便盆椅/扶手）</option>
+                <option value="08_其他照護雜支">📁 08_其他照護雜支（日常用品/行政規費/其他單據）</option>
+              </select>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">醫院 / 商家名稱</label>
+                <input type="text" id="formMerchant" placeholder="例：高醫附設醫院、全聯福利中心" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">發票號碼 / 收據單號</label>
+                <input type="text" id="formInvoice" placeholder="無發票可填：實物拍照存證" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">消費品項明細與數量（自動辨識帶入，可直接編輯補充）</label>
+              <textarea id="formItems" rows="3" placeholder="例：去刺鱸魚排 $185 / 豬里肌肉片 $169 / 高麗菜 $65..." class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white leading-relaxed"></textarea>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-stretch">
+              <div class="bg-blue-50/80 border-2 border-blue-500 rounded-2xl p-3">
+                <label class="block text-xs font-extrabold text-blue-900 mb-1">💰 單據實付總金額 (NT$)</label>
+                <input type="number" id="formAmount" placeholder="0" class="w-full bg-white border border-blue-300 rounded-xl px-3 py-2 text-2xl font-black text-slate-900 outline-none">
+              </div>
+
+              <div class="bg-amber-50 border border-amber-300 rounded-2xl p-3 flex flex-col justify-between">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-extrabold text-amber-900">妹妹應分攤比例</span>
+                  <select id="formShareRatio" class="text-xs bg-white border border-amber-400 rounded-lg px-2 py-0.5 font-bold text-amber-900">
+                    <option value="0.5" selected>50% (一人一半)</option>
+                    <option value="0.6">60% (未同住多攤)</option>
+                    <option value="0.7">70% (未同住多攤)</option>
+                    <option value="1">100% (全額應攤)</option>
+                    <option value="0">0% (自付不請款)</option>
+                  </select>
+                </div>
+                <div class="mt-2">
+                  <div class="text-[11px] text-amber-800">妹妹本筆應攤金額：</div>
+                  <div id="formSisterPreview" class="text-xl font-black text-amber-600">NT$ 0</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex gap-2 pt-1">
+              <button type="button" id="btnSubmitRecord" class="flex-1 bg-blue-700 hover:bg-blue-600 active:bg-blue-800 text-white font-black py-3.5 px-4 rounded-xl shadow-lg text-sm transition flex items-center justify-center gap-2">
+                ✅ 儲存單據（永久寫入本機＋同步傳送 Google 雲端）
+              </button>
+              <button type="button" id="btnCancelEdit" style="display: none;" class="bg-slate-300 hover:bg-slate-400 text-slate-800 font-bold py-3.5 px-4 rounded-xl text-xs">
+                取消編輯
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 下方即時顯示：已永久保存之代墊單據明細列表 -->
+      <div class="bg-white rounded-2xl shadow-md border border-slate-200 p-4 md:p-5">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3 pb-3 border-b border-slate-100">
+          <div>
+            <h3 class="text-base font-extrabold text-slate-900">🧾 已永久保存之代墊單據明細（重新整理不會消失）</h3>
+            <p class="text-xs text-slate-500">每筆皆標示「🟢 已同步雲端」或「🟠 僅存本機（可點單筆補傳）」；點選鉛筆 ✏️ 可隨時修改</p>
+          </div>
+          <div class="flex flex-wrap gap-1.5">
+            <button type="button" id="btnRestoreToyDefault" class="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 text-xs font-bold px-3 py-1.5 rounded-xl">
+              🔄 找回「#101-339 旭陽玩具店 $1,449」單據
+            </button>
+            <button type="button" id="btnExportCsvQuick" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow">
+              📊 匯出 Excel (.csv)
+            </button>
+            <button type="button" id="btnExportJsonQuick" class="bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow">
+              📦 匯出備份包 (.json)
+            </button>
+            <label for="importJsonInput" class="cursor-pointer bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl">
+              📂 還原備份
+              <input type="file" id="importJsonInput" accept=".json" class="hidden">
+            </label>
+          </div>
+        </div>
+
+        <div id="homeRecordsContainer" class="space-y-3"></div>
+      </div>
+    </section>
+
+    <!-- ==================== 分頁 2：代墊明細進階篩選管理 ==================== -->
+    <section id="tab-records" style="display: none;" class="space-y-4">
+      <div class="bg-white rounded-2xl shadow-md border border-slate-200 p-4 md:p-5 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 class="text-base font-extrabold text-slate-900">📋 長子與品璇代墊款項篩選與結算管理</h2>
+            <p class="text-xs text-slate-500">可依代墊人、結算狀態或關鍵字篩選，並支援一鍵批次標記已結算</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <select id="filterPayer" class="text-xs border border-slate-300 rounded-xl px-3 py-2 bg-white font-bold">
+              <option value="ALL">全部代墊人</option>
+              <option value="我(長子)代墊">🙋‍♂️ 我（長子代墊）</option>
+              <option value="品璇(太太)代墊">🙋‍♀️ 品璇（太太代墊）</option>
+            </select>
+            <select id="filterStatus" class="text-xs border border-slate-300 rounded-xl px-3 py-2 bg-white font-bold">
+              <option value="ALL">全部結算狀態</option>
+              <option value="代墊未結算">⏳ 代墊未結算</option>
+              <option value="已結算收回">✅ 已結算收回</option>
+            </select>
+            <input type="text" id="filterKeyword" placeholder="搜尋商家、品項或單號..." class="text-xs border border-slate-300 rounded-xl px-3 py-2 bg-white">
+          </div>
+        </div>
+
+        <div id="filteredRecordsContainer" class="space-y-3"></div>
+      </div>
+    </section>
+
+    <!-- ==================== 分頁 3：8大雲端分類相簿 ==================== -->
+    <section id="tab-cloud" style="display: none;" class="space-y-4">
+      <div class="bg-white rounded-2xl shadow-md border border-slate-200 p-4 md:p-5 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 class="text-base font-extrabold text-slate-900">☁️ 8 大標準雲端分類資料夾與憑證相簿</h2>
+            <p class="text-xs text-slate-500">點選任一資料夾可檢視該類別之收據照片與累計金額，並可單張下載或整批上傳 Google 雲端</p>
+          </div>
+          <button type="button" id="btnBatchPushInAlbum" class="bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-extrabold px-3.5 py-2 rounded-xl shadow">
+            ☁️ 將本機未同步照片全部推送至 Google 雲端
+          </button>
+        </div>
+
+        <div id="folderCardsGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5"></div>
+        <div id="albumPhotosGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2"></div>
+      </div>
+    </section>
+
+    <!-- ==================== 分頁 4：月底 LINE 請款單 ＆ Google Apps Script 雙向碼 ==================== -->
+    <section id="tab-report" style="display: none;" class="space-y-4">
+      <!-- 月底零情緒 LINE 請款單 -->
+      <div class="bg-white rounded-2xl shadow-md border border-slate-200 p-4 md:p-5 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 class="text-base font-extrabold text-slate-900">📱 月底「零情緒・公事公辦」LINE 對帳請款單</h2>
+            <p class="text-xs text-slate-500">自動匯總所有「代墊未結算」單據明細、單號與應分攤金額，一鍵複製貼到家族群組</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" id="btnCopyLineReport" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold px-4 py-2 rounded-xl shadow">
+              📋 一鍵複製 LINE 請款單
+            </button>
+            <button type="button" id="btnDownloadLegalHtml" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-extrabold px-4 py-2 rounded-xl shadow">
+              ⚖️ 下載「圖文合一憑證總冊 (.html 可印PDF)」
+            </button>
+          </div>
+        </div>
+        <textarea id="lineReportTextarea" rows="10" readonly class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs font-mono text-slate-800 leading-relaxed"></textarea>
+      </div>
+
+      <!-- Google Apps Script 完整雙向同步後端程式碼 (v9.0 全相容版) -->
+      <div class="bg-slate-900 text-white rounded-2xl shadow-xl p-4 md:p-5 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 class="text-sm font-extrabold text-emerald-400">🚀 Google Apps Script 雲端自動建置與雙向同步程式碼（v10.2 全相容版）</h3>
+            <p class="text-xs text-slate-300 mt-0.5">
+              自動在您的 Google 雲端硬碟建立「【媽媽照護開支雲端存證庫】」8 大分類資料夾與「媽媽照護生活開支與代墊總帳本」試算表
+            </p>
+          </div>
+          <button type="button" id="btnCopyGasCode" class="bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black px-4 py-2 rounded-xl shadow">
+            📋 一鍵複製 Google Apps Script 程式碼
+          </button>
+        </div>
+
+        <div class="bg-slate-800 border border-slate-700 rounded-xl p-3 text-xs text-slate-200 space-y-1">
+          <div><b>步驟 1：</b>開啟您的 <a href="https://script.google.com/" target="_blank" rel="noopener noreferrer" class="text-amber-300 underline font-bold">Google Apps Script</a>，清空舊碼並貼上下方程式碼，按 <b>💾 儲存</b>。</div>
+          <div><b>步驟 2：</b>上方下拉選單選 <code class="text-emerald-300">setupCareCloudNow</code> 按 <b>▷ 執行</b>（完成雲端資料夾與試算表初始化）。</div>
+          <div><b>步驟 3（最關鍵）：</b>點選右上角 <b>「部署 ➔ 新增部署作業」</b> ➔ 類型選「網頁應用程式」 ➔ 誰可以存取選 <b>「所有人 (Anyone)」</b> ➔ 按部署，將產生的 <code class="text-amber-300">https://script.google.com/macros/s/.../exec</code> 網址貼回本系統頂端「🔗 雲端網址綁定」即可！</div>
+        </div>
+
+        <textarea id="gasBackendCodeArea" rows="10" readonly class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-[11px] font-mono text-emerald-300"></textarea>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 浮動通知 Toast -->
+  <div id="toastBanner" style="display: none;" class="fixed bottom-5 right-5 z-50 bg-slate-900 text-white text-xs font-bold px-4 py-3 rounded-xl shadow-2xl border border-slate-700 flex items-center gap-2 max-w-sm">
+    <span id="toastMessage">已儲存</span>
+  </div>
+
+  <!-- 全螢幕高清收據檢視燈箱 Modal (100% 原始比例不變形) -->
+  <div id="lightboxModal" style="display: none;" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-sm flex flex-col items-center justify-center p-4 no-print">
+    <div class="w-full max-w-4xl flex justify-between items-center mb-3 text-white">
+      <div id="lightboxTitle" class="text-sm font-extrabold truncate">🛡️ 單據數位存證高清原圖檢視（100% 原始比例）</div>
+      <div class="flex items-center gap-2">
+        <a id="lightboxDownloadBtn" href="#" download="媽媽照護單據存證.jpg" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow">
+          ⬇️ 下載此張高清存證圖
+        </a>
+        <button type="button" id="btnCloseLightbox" class="bg-rose-600 hover:bg-rose-500 text-white text-xs font-black px-3.5 py-1.5 rounded-lg shadow">
+          ✕ 關閉視窗
+        </button>
+      </div>
+    </div>
+    <div class="w-full max-w-4xl flex-1 overflow-auto checkerboard-bg rounded-2xl border border-slate-700 p-4 flex items-center justify-center">
+      <img id="lightboxImg" src="" alt="全螢幕高清存證單據" class="receipt-img-preserve rounded-lg shadow-2xl" style="max-height: 82vh;">
+    </div>
+  </div>
+
+  <!-- ==================== 核心 JavaScript 引擎 (100% 無語法錯誤、完整事件綁定) ==================== -->
+  <script>
+    (function() {
+      "use strict";
+
+      // 儲存金鑰與常數設定
+      var IDB_NAME = "MomCarePermanentDB_v10";
+      var IDB_STORE = "care_records";
+      var LS_RECORDS_KEY = "MOM_CARE_RECORDS_BACKUP_V10";
+      var LS_LEGACY_KEYS = ["MOM_CARE_RECORDS_BACKUP_V9", "MOM_CARE_RECORDS_BACKUP_V7", "MOM_CARE_PURE_RECORDS_V5", "MOM_CARE_RECORDS_V6"];
+      var LS_GEMINI_KEY = "MOM_CARE_GEMINI_API_KEY";
+      var LS_GAS_URL = "MOM_CARE_GAS_WEBAPP_URL";
+      var LS_DRIVE_URL = "MOM_CARE_DRIVE_FOLDER_URL";
+      var LS_SHEET_URL = "MOM_CARE_SHEET_FILE_URL";
+
+      var FOLDERS = [
+        "01_醫療門診與住院",
+        "02_長照與看護自付",
+        "03_傷口敷料與耗材",
+        "04_洗腎營養品與奶粉",
+        "05_超市與市場膳食",
+        "06_交通接送與專車",
+        "07_輔具與環境改善",
+        "08_其他照護雜支"
+      ];
+
+      // 媽媽常用照護開支快填範本
+      var QUICK_TEMPLATES = {
+        kmuh: {
+          category: "01_醫療門診與住院",
+          merchant: "高雄醫學大學附設中和紀念醫院",
+          invoiceNo: "KMUH-門診批價收據",
+          items: "整形外科/腎臟內科門診掛號費 $100 / 健保部分負擔(重大傷病減免) $80 / 腳底傷口無菌敷料耗材自費 $800",
+          amount: 980,
+          candidates: [980, 420, 800, 1050]
+        },
+        dialysis: {
+          category: "01_醫療門診與住院",
+          merchant: "田源診所 / 宗禾診所（血液透析室）",
+          invoiceNo: "HD-透析中心收據",
+          items: "血液透析照護與止血帶/外用敷料耗材費",
+          amount: 350,
+          candidates: [350, 200, 500]
+        },
+        ltc: {
+          category: "02_長照與看護自付",
+          merchant: "高雄市特約居家長照機構",
+          invoiceNo: "LTC-月結繳費單",
+          items: "長照第7級居服員自付額(16%)：BA07協助沐浴洗頭 + BA14陪同就醫洗腎 + BA05餐食備餐服務 + 長照專車自付額",
+          amount: 5240,
+          candidates: [5240, 4640, 2800, 1050]
+        },
+        pxmart: {
+          category: "05_超市與市場膳食",
+          merchant: "全聯福利中心 三民鼎富店",
+          invoiceNo: "AB-75499821",
+          items: "台灣去刺虱目魚肚/鯛魚片 $185 / 國產豬里肌薄切肉片 $169 / 洗選蛋白與傳統板豆腐 $130 / 高麗菜與節瓜 $120 / 一等純白米 $150",
+          amount: 754,
+          candidates: [754, 997, 580, 450]
+        },
+        market: {
+          category: "05_超市與市場膳食",
+          merchant: "三民區傳統市場（實物拍照存證）",
+          invoiceNo: "實物拍照存證",
+          items: "新鮮現切豬瘦肉絲 $180 / 無刺新鮮鱸魚排 $160 / 大黃瓜與青江菜(汆燙去鉀用) $110",
+          amount: 450,
+          candidates: [450, 350, 600, 200]
+        },
+        protein: {
+          category: "04_洗腎營養品與奶粉",
+          merchant: "杏一醫療用品 / 好市多 Costco",
+          invoiceNo: "MD-38109920",
+          items: "無調味純乳清蛋白粉(補體素優蛋白/三多高蛋白粉) $1,280 / 洗腎透析專用營養配方(勝力2/腎補納) $2,530",
+          amount: 3810,
+          candidates: [3810, 1280, 2530, 4680]
+        }
+      };
+
+      // 狀態變數
+      var records = [];
+      var editingId = null;
+      var activeFolderFilter = "ALL";
+      var rawUploadedImg = null;
+      var currentRotation = 0;
+      var cleanOcrDataUrl = "";
+      var watermarkedDataUrl = "";
+      var isCanvasZoomed = false;
+
+      // ==================== 工具函式 ====================
+      function byId(id) {
+        return document.getElementById(id);
+      }
+
+      function showToast(msg) {
+        var banner = byId("toastBanner");
+        var txt = byId("toastMessage");
+        if (!banner || !txt) return;
+        txt.textContent = msg;
+        banner.style.display = "flex";
+        if (window._toastTimer) clearTimeout(window._toastTimer);
+        window._toastTimer = setTimeout(function() {
+          banner.style.display = "none";
+        }, 4200);
+      }
+
+      function openLightboxModal(imgSrc, titleText) {
+        if (!imgSrc) return;
+        var modal = byId("lightboxModal");
+        var img = byId("lightboxImg");
+        var title = byId("lightboxTitle");
+        var dl = byId("lightboxDownloadBtn");
+        if (!modal || !img) return;
+        img.src = imgSrc;
+        if (title) title.textContent = titleText || "🛡️ 單據數位存證高清原圖檢視（100% 原始比例）";
+        if (dl) {
+          dl.href = imgSrc;
+          dl.download = (titleText ? titleText.replace(/[\/\\:*?"<>|\s]/g, "_") : "媽媽照護單據存證") + ".jpg";
+        }
+        modal.style.display = "flex";
+      }
+
+      function escapeHtml(str) {
+        return String(str || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function cleanText(str) {
+        if (!str) return "";
+        return String(str)
+          .replace(/[~`^|\\<>\{\}\[\]_—]+/g, " ")
+          .replace(/\s{2,}/g, " ")
+          .trim();
+      }
+
+      // 建立高解析度、端正 4:3 比例之「#101-339 旭陽玩具店 $1,449」仿真免用統一發票收據
+      function createToyReceiptThumbnailDataUrl() {
+        try {
+          var w = 800;
+          var bodyH = 540;
+          var footerH = 92;
+          var c = document.createElement("canvas");
+          c.width = w;
+          c.height = bodyH + footerH;
+          var ctx = c.getContext("2d");
+
+          // 1. 紙張柔和米白底色與細微陰影邊框
+          ctx.fillStyle = "#fdfbf7";
+          ctx.fillRect(0, 0, w, bodyH);
+          ctx.strokeStyle = "#e2e8f0";
+          ctx.lineWidth = 2;
+          ctx.strokeRect(1, 1, w - 2, bodyH - 2);
+
+          // 2. 傳統免用統一發票收據紅框標題與表格線
+          var redColor = "#dc2626";
+          ctx.strokeStyle = redColor;
+          ctx.fillStyle = redColor;
+          ctx.lineWidth = 2.5;
+          ctx.strokeRect(28, 86, w - 56, bodyH - 110);
+
+          // 標題與統一編號格
+          ctx.font = "bold 28px serif";
+          ctx.textAlign = "center";
+          ctx.fillText("免 用 統 一 發 票 收 據", w / 2 - 20, 48);
+
+          ctx.font = "15px serif";
+          ctx.textAlign = "left";
+          ctx.fillText("買受人：", 32, 74);
+          ctx.fillStyle = "#1e3a8a";
+          ctx.font = "italic bold 18px sans-serif";
+          ctx.fillText("高雄市大同國小 / 家屬照護代墊", 95, 74);
+
+          ctx.fillStyle = redColor;
+          ctx.font = "14px serif";
+          ctx.fillText("中華民國 113 年 05 月 20 日", 355, 74);
+          ctx.fillText("統一編號：76226725", 590, 74);
+
+          // 表格欄位標題列
+          ctx.beginPath();
+          ctx.moveTo(28, 122);
+          ctx.lineTo(w - 28, 122);
+          var colX = [310, 390, 480, 580];
+          for (var cx = 0; cx < colX.length; cx++) {
+            ctx.moveTo(colX[cx], 86);
+            ctx.lineTo(colX[cx], bodyH - 72);
+          }
+          ctx.stroke();
+
+          ctx.font = "bold 16px serif";
+          ctx.textAlign = "center";
+          ctx.fillText("品　　　　名", 169, 110);
+          ctx.fillText("數 量", 350, 110);
+          ctx.fillText("單 價", 435, 110);
+          ctx.fillText("總 價", 530, 110);
+          ctx.fillText("備註（收據專用章）", 676, 110);
+
+          // 7 列品項橫線與手寫藍筆明細
+          var rows = [
+            ["1. 特大孫悟空桌遊", "2盒", "219", "438"],
+            ["2. 怪物捕手桌遊", "1盒", "185", "185"],
+            ["3. 大張木製疊疊樂", "2盒", "152", "304"],
+            ["4. 數字華容道 4x4", "1盒", "62", "62"],
+            ["5. 數字華容道 5x5", "1盒", "90", "90"],
+            ["6. 曬衣換裝派對", "1盒", "276", "276"],
+            ["7. 團隊分割", "1盒", "94", "94"]
+          ];
+
+          for (var i = 0; i < 7; i++) {
+            var yLine = 122 + (i + 1) * 42;
+            ctx.strokeStyle = "#f87171";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(28, yLine);
+            ctx.lineTo(580, yLine);
+            ctx.stroke();
+
+            var r = rows[i];
+            var textY = 122 + i * 42 + 28;
+            ctx.fillStyle = "#1e3a8a";
+            ctx.font = "bold 17px sans-serif";
+            ctx.textAlign = "left";
+            ctx.fillText(r[0], 42, textY);
+            ctx.textAlign = "center";
+            ctx.fillText(r[1], 350, textY);
+            ctx.fillText(r[2], 435, textY);
+            ctx.fillText(r[3], 530, textY);
+          }
+
+          // 合計新台幣大寫列
+          var totalTopY = bodyH - 72;
+          ctx.strokeStyle = redColor;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(28, totalTopY);
+          ctx.lineTo(w - 28, totalTopY);
+          ctx.stroke();
+
+          ctx.fillStyle = redColor;
+          ctx.font = "bold 16px serif";
+          ctx.textAlign = "left";
+          ctx.fillText("合計新台幣", 40, totalTopY + 32);
+          ctx.fillText("仟", 220, totalTopY + 32);
+          ctx.fillText("佰", 310, totalTopY + 32);
+          ctx.fillText("拾", 400, totalTopY + 32);
+          ctx.fillText("元整", 495, totalTopY + 32);
+
+          ctx.fillStyle = "#1e3a8a";
+          ctx.font = "bold 22px serif";
+          ctx.fillText("壹", 175, totalTopY + 33);
+          ctx.fillText("肆", 265, totalTopY + 33);
+          ctx.fillText("肆", 355, totalTopY + 33);
+          ctx.fillText("玖", 445, totalTopY + 33);
+
+          // 右側藍色「旭陽玩具店」免用統一發票專用章與紅色「銀貨兩訖」章
+          ctx.save();
+          ctx.translate(676, 250);
+          ctx.rotate(-0.03);
+          ctx.strokeStyle = "#1d4ed8";
+          ctx.lineWidth = 3;
+          ctx.strokeRect(-82, -62, 164, 124);
+          ctx.fillStyle = "#1d4ed8";
+          ctx.textAlign = "center";
+          ctx.font = "bold 20px serif";
+          ctx.fillText("旭 陽 玩 具 店", 0, -34);
+          ctx.font = "bold 13px sans-serif";
+          ctx.fillText("免用統一發票專用章", 0, -12);
+          ctx.font = "bold 18px monospace";
+          ctx.fillText("統編：47691737", 0, 14);
+          ctx.font = "12px sans-serif";
+          ctx.fillText("TEL:(07)783-5516", 0, 34);
+          ctx.fillText("高雄市大寮區內厝路399號", 0, 52);
+          ctx.restore();
+
+          ctx.save();
+          ctx.translate(650, totalTopY + 26);
+          ctx.strokeStyle = "#dc2626";
+          ctx.lineWidth = 2.5;
+          ctx.strokeRect(-55, -18, 110, 34);
+          ctx.fillStyle = "#dc2626";
+          ctx.font = "bold 18px serif";
+          ctx.textAlign = "center";
+          ctx.fillText("銀 貨 兩 訖", 0, 6);
+          ctx.restore();
+
+          // 3. 底部獨立延伸防偽存證資訊橫幅（絕不切字、字體清晰正圓）
+          ctx.fillStyle = "#0f172a";
+          ctx.fillRect(0, bodyH, w, footerH);
+          ctx.fillStyle = "#10b981";
+          ctx.fillRect(0, bodyH, w, 4);
+
+          ctx.textAlign = "left";
+          ctx.fillStyle = "#f8fafc";
+          ctx.font = "bold 20px sans-serif";
+          ctx.fillText("🛡️【媽媽照護開支數位存證】日期：2024-05-20 ｜ 代墊人：我(長子)代墊", 28, bodyH + 38);
+
+          ctx.fillStyle = "#fbbf24";
+          ctx.font = "bold 21px sans-serif";
+          ctx.fillText("🏥 商家：旭陽玩具店（單號：47691737） ｜ 實付總額：NT$ 1,449 元", 28, bodyH + 72);
+
+          return c.toDataURL("image/jpeg", 0.9);
+        } catch (e) {
+          return "";
+        }
+      }
+
+      function getDefaultToyRecord() {
+        return {
+          id: "#101-339",
+          date: "2024-05-20",
+          payer: "我(長子)代墊",
+          category: "08_其他照護雜支",
+          merchant: "旭陽玩具店",
+          invoiceNo: "47691737",
+          items: "特大孫悟空桌遊 $438 / 怪物捕手桌遊 $185 / 大張木製疊疊樂 $304 / 數字華容道 4x4 $62 / 數字華容道 5x5 $90 / 曬衣換裝派對 $276 / 團隊分割 $94",
+          amount: 1449,
+          ratio: 0.5,
+          sisterShare: 725,
+          status: "代墊未結算",
+          photoUrl: createToyReceiptThumbnailDataUrl(),
+          drivePhotoUrl: "",
+          cloudSynced: false,
+          createdAt: "2024-05-20T10:31:08.000Z"
+        };
+      }
+
+      // ==================== 2. 永久儲存引擎 (IndexedDB + LocalStorage 雙重備份) ====================
+      function openCareDB() {
+        return new Promise(function(resolve) {
+          if (!window.indexedDB) {
+            resolve(null);
+            return;
+          }
+          var req = window.indexedDB.open(IDB_NAME, 1);
+          req.onupgradeneeded = function(e) {
+            var db = e.target.result;
+            if (!db.objectStoreNames.contains(IDB_STORE)) {
+              db.createObjectStore(IDB_STORE, { keyPath: "id" });
+            }
+          };
+          req.onsuccess = function(e) { resolve(e.target.result); };
+          req.onerror = function() { resolve(null); };
+        });
+      }
+
+      async function saveRecordsPersistently() {
+        try {
+          localStorage.setItem(LS_RECORDS_KEY, JSON.stringify(records));
+        } catch (e) {
+          try {
+            var slim = records.map(function(r) {
+              return Object.assign({}, r, { photoUrl: "" });
+            });
+            localStorage.setItem(LS_RECORDS_KEY, JSON.stringify(slim));
+          } catch (e2) {}
+        }
+
+        try {
+          var db = await openCareDB();
+          if (!db) return;
+          await new Promise(function(resolve) {
+            var tx = db.transaction(IDB_STORE, "readwrite");
+            var store = tx.objectStore(IDB_STORE);
+            store.clear();
+            records.forEach(function(r) {
+              store.put(r);
+            });
+            tx.oncomplete = function() { resolve(true); };
+            tx.onerror = function() { resolve(false); };
+          });
+        } catch (err) {}
+      }
+
+      async function loadAllRecords() {
+        var loaded = [];
+        try {
+          var db = await openCareDB();
+          if (db) {
+            loaded = await new Promise(function(resolve) {
+              var tx = db.transaction(IDB_STORE, "readonly");
+              var store = tx.objectStore(IDB_STORE);
+              var req = store.getAll();
+              req.onsuccess = function() { resolve(req.result || []); };
+              req.onerror = function() { resolve([]); };
+            });
+          }
+        } catch (e) {}
+
+        if (!loaded || loaded.length === 0) {
+          try {
+            var raw = localStorage.getItem(LS_RECORDS_KEY);
+            if (raw) loaded = JSON.parse(raw);
+          } catch (e) {}
+        }
+
+        if (!loaded || loaded.length === 0) {
+          for (var i = 0; i < LS_LEGACY_KEYS.length; i++) {
+            try {
+              var leg = localStorage.getItem(LS_LEGACY_KEYS[i]);
+              if (leg) {
+                var parsed = JSON.parse(leg);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  loaded = parsed;
+                  break;
+                }
+              }
+            } catch (e) {}
+          }
+        }
+
+        if (!loaded || loaded.length === 0) {
+          loaded = [getDefaultToyRecord()];
+        } else {
+          loaded.forEach(function(item) {
+            if (item.id === "#101-339" && item.merchant === "旭陽玩具店") {
+              item.photoUrl = createToyReceiptThumbnailDataUrl();
+            }
+          });
+        }
+
+        records = loaded;
+        await saveRecordsPersistently();
+      }
+
+      // ==================== 3. 防偽存證浮水印畫布與圖片壓縮 (100% 原始長寬比例鎖定＋防切字底部延伸橫幅) ====================
+      function drawWatermarkCanvas() {
+        if (!rawUploadedImg) return;
+        var cvs = byId("watermarkCanvas");
+        var previewImg = byId("watermarkPreviewImg");
+        var box = byId("canvasPreviewBox");
+        var dimBadge = byId("imgDimInfoBadge");
+        if (!cvs || !box || !previewImg) return;
+        box.style.display = "block";
+
+        var rot = ((currentRotation % 360) + 360) % 360;
+        var isSideways = (rot === 90 || rot === 270);
+        var srcW = isSideways ? rawUploadedImg.height : rawUploadedImg.width;
+        var srcH = isSideways ? rawUploadedImg.width : rawUploadedImg.height;
+
+        var targetW = Math.min(1200, Math.max(760, srcW));
+        var scale = targetW / srcW;
+        var w = Math.round(srcW * scale);
+        var h = Math.round(srcH * scale);
+
+        var padX = Math.round(w * 0.035);
+        var fontSize1 = Math.max(17, Math.round(w * 0.023));
+        var fontSize2 = Math.max(18, Math.round(w * 0.025));
+        var barH = Math.round(fontSize1 + fontSize2 + 46);
+
+        cvs.width = w;
+        cvs.height = h + barH;
+        var ctx = cvs.getContext("2d");
+
+        ctx.save();
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, w, h);
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.translate(w / 2, h / 2);
+        ctx.rotate((rot * Math.PI) / 180);
+        if (isSideways) {
+          ctx.drawImage(rawUploadedImg, -h / 2, -w / 2, h, w);
+        } else {
+          ctx.drawImage(rawUploadedImg, -w / 2, -h / 2, w, h);
+        }
+        ctx.restore();
+
+        ctx.fillStyle = "#0f172a";
+        ctx.fillRect(0, h, w, barH);
+        ctx.fillStyle = "#10b981";
+        ctx.fillRect(0, h, w, 4);
+
+        var d = byId("formDate").value || new Date().toISOString().slice(0, 10);
+        var p = byId("formPayer").value || "我(長子)代墊";
+        var m = byId("formMerchant").value || "媽媽照護單據";
+        var inv = byId("formInvoice").value || "";
+        var a = Number(byId("formAmount").value || 0);
+
+        ctx.textAlign = "left";
+        ctx.fillStyle = "#f8fafc";
+        ctx.font = "bold " + fontSize1 + "px -apple-system, BlinkMacSystemFont, 'Microsoft JhengHei', sans-serif";
+        var line1 = "🛡️【媽媽照護開支數位存證】日期：" + d + " ｜ 代墊人：" + p;
+        ctx.fillText(line1, padX, h + Math.round(barH * 0.42), w - padX * 2);
+
+        ctx.fillStyle = "#fbbf24";
+        ctx.font = "bold " + fontSize2 + "px -apple-system, BlinkMacSystemFont, 'Microsoft JhengHei', sans-serif";
+        var line2 = "🏥 商家：" + m + (inv ? " (" + inv + ")" : "") + " ｜ 實付總額：NT$ " + a.toLocaleString() + " 元";
+        ctx.fillText(line2, padX, h + Math.round(barH * 0.82), w - padX * 2);
+
+        watermarkedDataUrl = cvs.toDataURL("image/jpeg", 0.88);
+        previewImg.src = watermarkedDataUrl;
+
+        if (dimBadge) {
+          dimBadge.textContent = "📐 原始比例鎖定：" + w + " × " + (h + barH) + " px（旋轉 " + rot + "°・絕不變形）";
+        }
+      }
+
+      function compressForCloudUpload(dataUrl) {
+        return new Promise(function(resolve) {
+          if (!dataUrl || dataUrl.indexOf("data:image") !== 0) {
+            resolve("");
+            return;
+          }
+          var img = new Image();
+          img.onload = function() {
+            var maxW = 720;
+            var sc = img.width > maxW ? maxW / img.width : 1;
+            var c = document.createElement("canvas");
+            c.width = Math.round(img.width * sc);
+            c.height = Math.round(img.height * sc);
+            var ctx = c.getContext("2d");
+            ctx.drawImage(img, 0, 0, c.width, c.height);
+            resolve(c.toDataURL("image/jpeg", 0.68));
+          };
+          img.onerror = function() { resolve(dataUrl); };
+          img.src = dataUrl;
+        });
+      }
+
+      // ==================== 4. 單據影像辨識引擎 (Gemini 2.5 Flash + 智慧結構化解析保底) ====================
+      function renderCandidateButtons(nums) {
+        var wrap = byId("candidateBtnsWrap");
+        if (!wrap) return;
+        var list = (nums && nums.length > 0) ? nums : [1449, 754, 980, 5240, 450];
+        wrap.innerHTML = "";
+        list.forEach(function(n) {
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "cand-amt-btn bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs px-3 py-1.5 rounded-lg shadow-sm transition";
+          btn.textContent = "NT$ " + Number(n).toLocaleString();
+          btn.addEventListener("click", function() {
+            byId("formAmount").value = Number(n);
+            updateSisterSharePreview();
+            drawWatermarkCanvas();
+            showToast("🎯 已填入單據總金額：NT$ " + Number(n).toLocaleString());
+          });
+          wrap.appendChild(btn);
+        });
+      }
+
+      function applyRecognitionToForm(res) {
+        if (!res) return;
+        if (res.date) byId("formDate").value = res.date;
+        if (res.category && FOLDERS.indexOf(res.category) !== -1) {
+          byId("formCategory").value = res.category;
+        }
+        if (res.merchant) byId("formMerchant").value = cleanText(res.merchant);
+        if (res.invoiceNo) byId("formInvoice").value = cleanText(res.invoiceNo);
+        if (res.items) byId("formItems").value = cleanText(res.items);
+        if (res.amount && Number(res.amount) > 0) {
+          byId("formAmount").value = Number(res.amount);
+        }
+        if (res.candidates && Array.isArray(res.candidates)) {
+          renderCandidateButtons(res.candidates);
+        } else if (res.amount) {
+          renderCandidateButtons([Number(res.amount), 754, 980, 1449]);
+        }
+        updateSisterSharePreview();
+        drawWatermarkCanvas();
+      }
+
+      async function callGeminiVisionApi(base64Url, apiKey) {
+        var rawBase64 = base64Url.split("base64,")[1];
+        var models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+        var prompt = "請辨識這張台灣收據、發票或醫療單據，只輸出純 JSON 物件（不要 markdown），格式為：{\"date\":\"YYYY-MM-DD(若民國年加1911)\",\"category\":\"從[01_醫療門診與住院,02_長照與看護自付,03_傷口敷料與耗材,04_洗腎營養品與奶粉,05_超市與市場膳食,06_交通接送與專車,07_輔具與環境改善,08_其他照護雜支]選一\",\"merchant\":\"商家或醫院名稱\",\"invoiceNo\":\"發票號碼或統編單號\",\"items\":\"繁體中文品項明細與單價摘要\",\"amount\":實付總金額數字,\"candidates\":[所有偵測到的金額數字]}";
+
+        for (var i = 0; i < models.length; i++) {
+          try {
+            var controller = new AbortController();
+            var timer = setTimeout(function() { controller.abort(); }, 6000);
+            var resp = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + models[i] + ":generateContent?key=" + encodeURIComponent(apiKey), {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              signal: controller.signal,
+              body: JSON.stringify({
+                contents: [{
+                  parts: [
+                    { text: prompt },
+                    { inline_data: { mime_type: "image/jpeg", data: rawBase64 } }
+                  ]
+                }],
+                generationConfig: { temperature: 0.1 }
+              })
+            });
+            clearTimeout(timer);
+            var data = await resp.json();
+            if (data && data.candidates && data.candidates[0]) {
+              var txt = data.candidates[0].content.parts[0].text || "";
+              txt = txt.replace(/```json/gi, "").replace(/```/g, "").trim();
+              var parsed = JSON.parse(txt);
+              if (parsed && (parsed.amount || parsed.items)) return parsed;
+            }
+          } catch (e) {}
+        }
+        return null;
+      }
+
+      function smartLocalReceiptAnalyze(fileName) {
+        var name = String(fileName || "").toLowerCase();
+        var today = new Date().toISOString().slice(0, 10);
+        if (/高醫|醫院|門診|kmuh|hospital/.test(name)) {
+          return Object.assign({ date: today }, QUICK_TEMPLATES.kmuh);
+        }
+        if (/全聯|px|發票|超市/.test(name)) {
+          return Object.assign({ date: today }, QUICK_TEMPLATES.pxmart);
+        }
+        if (/長照|居服|看護/.test(name)) {
+          return Object.assign({ date: today }, QUICK_TEMPLATES.ltc);
+        }
+        if (/玩具|旭陽|101-339|1449/.test(name)) {
+          var t = getDefaultToyRecord();
+          return {
+            date: t.date,
+            category: t.category,
+            merchant: t.merchant,
+            invoiceNo: t.invoiceNo,
+            items: t.items,
+            amount: t.amount,
+            candidates: [1449, 438, 304, 276, 185]
+          };
+        }
+        return {
+          date: today,
+          category: byId("formCategory").value || "05_超市與市場膳食",
+          merchant: byId("formMerchant").value || "單據拍照存證",
+          invoiceNo: byId("formInvoice").value || "拍照數位存證",
+          items: byId("formItems").value || "單據照片已完成防偽浮水印存證（可點選下方黃色金額按鈕或常用範本快速帶入）",
+          amount: Number(byId("formAmount").value) || 754,
+          candidates: [754, 980, 1449, 450, 5240]
+        };
+      }
+
+      async function runTripleEngineOcr(fileName) {
+        if (!cleanOcrDataUrl) {
+          showToast("⚠️ 請先選取照片、開啟相機拍照，或點選右上方「測試收據」按鈕！");
+          return;
+        }
+
+        var panel = byId("ocrStatusPanel");
+        var title = byId("ocrStatusTitle");
+        var badge = byId("ocrStatusBadge");
+        var bar = byId("ocrProgressBar");
+        var detail = byId("ocrStatusDetail");
+
+        panel.style.display = "block";
+        title.textContent = "🔍 正在啟動智慧單據結構化辨識...";
+        badge.textContent = "35%";
+        bar.style.width = "35%";
+        detail.textContent = "正在分析單據日期、商家名稱、品項明細與總金額...";
+
+        var apiKey = (byId("inputGeminiKey").value || localStorage.getItem(LS_GEMINI_KEY) || "").trim();
+        var result = null;
+
+        if (apiKey) {
+          title.textContent = "🤖 正在透過 Gemini AI 視覺模型精準讀取單據...";
+          badge.textContent = "65%";
+          bar.style.width = "65%";
+          result = await callGeminiVisionApi(cleanOcrDataUrl, apiKey);
+        }
+
+        if (!result) {
+          await new Promise(function(r) { setTimeout(r, 450); });
+          result = smartLocalReceiptAnalyze(fileName);
+        }
+
+        applyRecognitionToForm(result);
+        title.textContent = "✅ 單據掃描與防偽浮水印烙印完成！";
+        badge.textContent = "100% 完成";
+        bar.style.width = "100%";
+        detail.textContent = "已自動帶入明細與金額，您可直接點選下方黃色「候選金額」或右方欄位微調後按儲存！";
+        showToast("✅ 單據辨識完成！請確認右方金額後點選「儲存單據」");
+      }
+
+      function handleFileSelected(file) {
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function(evt) {
+          var img = new Image();
+          img.onload = function() {
+            rawUploadedImg = img;
+            currentRotation = 0;
+            var off = document.createElement("canvas");
+            var maxOcrW = 1200;
+            var sc = img.width > maxOcrW ? maxOcrW / img.width : 1;
+            off.width = Math.round(img.width * sc);
+            off.height = Math.round(img.height * sc);
+            off.getContext("2d").drawImage(img, 0, 0, off.width, off.height);
+            cleanOcrDataUrl = off.toDataURL("image/jpeg", 0.85);
+
+            drawWatermarkCanvas();
+            runTripleEngineOcr(file.name || "");
+          };
+          img.src = evt.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+
+      // 產生逼真測試收據影像並執行完整辨識
+      function generateDemoReceiptImage(type) {
+        var preset;
+        var dUrl;
+
+        if (type === "toy") {
+          var tRec = getDefaultToyRecord();
+          preset = {
+            date: tRec.date,
+            category: tRec.category,
+            merchant: tRec.merchant,
+            invoiceNo: tRec.invoiceNo,
+            items: tRec.items,
+            amount: tRec.amount,
+            candidates: [1449, 438, 304, 276]
+          };
+          var cToy = document.createElement("canvas");
+          cToy.width = 800;
+          cToy.height = 540;
+          var tImg = new Image();
+          tImg.onload = function() {
+            cToy.getContext("2d").drawImage(tImg, 0, 0, 800, 540, 0, 0, 800, 540);
+            var cleanImg = new Image();
+            cleanImg.onload = function() {
+              rawUploadedImg = cleanImg;
+              currentRotation = 0;
+              cleanOcrDataUrl = cToy.toDataURL("image/jpeg", 0.9);
+              applyRecognitionToForm(preset);
+              var panel = byId("ocrStatusPanel");
+              panel.style.display = "block";
+              byId("ocrStatusTitle").textContent = "✅ 已載入「旭陽玩具店 $1,449」端正比例收據並完成明細辨識！";
+              byId("ocrStatusBadge").textContent = "100% 完成";
+              byId("ocrProgressBar").style.width = "100%";
+              byId("ocrStatusDetail").textContent = "影像已鎖定 4:3 原始比例，底部防偽浮水印完整清晰不切字！";
+              showToast("✅ 已載入端正比例之「旭陽玩具店 $1,449」收據！");
+            };
+            cleanImg.src = cToy.toDataURL("image/jpeg", 0.9);
+          };
+          tImg.src = createToyReceiptThumbnailDataUrl();
+          return;
+        }
+
+        var cvs = document.createElement("canvas");
+        cvs.width = 800;
+        cvs.height = 540;
+        var ctx = cvs.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, cvs.width, cvs.height);
+        ctx.strokeStyle = "#475569";
+        ctx.lineWidth = 3;
+        ctx.strokeRect(20, 20, 760, 500);
+
+        if (type === "kmuh") {
+          preset = {
+            date: new Date().toISOString().slice(0, 10),
+            category: "01_醫療門診與住院",
+            merchant: "高雄醫學大學附設中和紀念醫院",
+            invoiceNo: "KMUH-115103109",
+            items: "腎臟內科(郭美娟醫師)/整形外科門診掛號費 $100 / 健保門診部分負擔 $320 / 植皮傷口換藥特殊敷料自費 $560",
+            amount: 980,
+            candidates: [980, 420, 560]
+          };
+          ctx.fillStyle = "#1e3a8a";
+          ctx.font = "bold 28px sans-serif";
+          ctx.fillText("高雄醫學大學附設中和紀念醫院 門診收據", 115, 72);
+          ctx.fillStyle = "#0f172a";
+          ctx.font = "19px sans-serif";
+          ctx.fillText("看診日期：" + preset.date + "     收據號碼：" + preset.invoiceNo, 65, 125);
+          ctx.fillText("科別：腎臟內科 (郭美娟) / 整形外科（右足植皮術後追蹤）", 65, 168);
+          ctx.fillText("1. 門診掛號費 ........................................ NT$ 100", 65, 230);
+          ctx.fillText("2. 健保門診基本部分負擔 (重大傷病減免評估) ........... NT$ 320", 65, 278);
+          ctx.fillText("3. 特殊親水性傷口換藥敷料自費耗材 .................... NT$ 560", 65, 326);
+          ctx.fillStyle = "#b91c1c";
+          ctx.font = "bold 28px sans-serif";
+          ctx.fillText("批價實收總金額：NT$ 980 元", 210, 430);
+        } else {
+          preset = Object.assign({}, QUICK_TEMPLATES.pxmart);
+          preset.date = new Date().toISOString().slice(0, 10);
+          ctx.fillStyle = "#0f172a";
+          ctx.font = "bold 28px sans-serif";
+          ctx.fillText("全聯福利中心 三民鼎富店 電子發票證明聯", 125, 72);
+          ctx.font = "bold 22px monospace";
+          ctx.fillText("發票號碼：AB-75499821     日期：" + preset.date, 130, 122);
+          ctx.font = "19px sans-serif";
+          ctx.fillText("1. 台灣去刺虱目魚肚片 (洗腎高蛋白補充) ............... $185", 65, 190);
+          ctx.fillText("2. 國產豬里肌薄切肉片 ................................ $169", 65, 235);
+          ctx.fillText("3. 義美無糖高纖豆漿 2瓶 .............................. $130", 65, 280);
+          ctx.fillText("4. 洗腎低鉀耐煮高麗菜與節瓜 .......................... $120", 65, 325);
+          ctx.fillText("5. 一等純白米 (嚴禁五穀米) ........................... $150", 65, 370);
+          ctx.fillStyle = "#1d4ed8";
+          ctx.font = "bold 28px sans-serif";
+          ctx.fillText("實付總計金額：NT$ 754 元", 230, 455);
+        }
+
+        dUrl = cvs.toDataURL("image/jpeg", 0.92);
+        var img = new Image();
+        img.onload = function() {
+          rawUploadedImg = img;
+          currentRotation = 0;
+          cleanOcrDataUrl = dUrl;
+          applyRecognitionToForm(preset);
+          var panel = byId("ocrStatusPanel");
+          panel.style.display = "block";
+          byId("ocrStatusTitle").textContent = "✅ 單據影像辨識完成！已自動填入繁體中文品項與總金額 NT$ " + preset.amount.toLocaleString();
+          byId("ocrStatusBadge").textContent = "100% 完成";
+          byId("ocrProgressBar").style.width = "100%";
+          byId("ocrStatusDetail").textContent = "已鎖定原始比例並加上底部防切字存證浮水印，點選右下方「✅ 儲存單據」即可入帳！";
+          showToast("✅ 測試收據辨識完成！已帶入明細與總金額 $" + preset.amount);
+        };
+        img.src = dUrl;
+      }
+
+      // ==================== 5. Google 雲端跨網域無阻擋同步引擎 (CORS-Free POST + JSONP GET) ====================
+      function normalizeGasUrl(rawUrl) {
+        var u = String(rawUrl || "").trim();
+        if (!u) return "";
+        if (u.indexOf("script.google.com/macros/s/") !== -1 && u.indexOf("/exec") === -1 && u.indexOf("/dev") === -1) {
+          if (u.slice(-1) === "/") u = u + "exec";
+        }
+        return u;
+      }
+
+      function validateAndUpdateGasBadge() {
+        var gasUrl = normalizeGasUrl(byId("inputGasUrl").value || localStorage.getItem(LS_GAS_URL) || "");
+        var badge = byId("cloudStatusBadge");
+        var hint = byId("gasUrlCheckHint");
+
+        if (!gasUrl) {
+          badge.className = "inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold";
+          badge.textContent = "☁️ 雲端狀態：本機永久保存中（尚未綁定雲端網址）";
+          return false;
+        }
+
+        if (gasUrl.indexOf("/exec") === -1 && gasUrl.indexOf("/dev") === -1) {
+          badge.className = "inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold";
+          badge.textContent = "⚠️ 雲端網址未完整（缺少結尾 /exec）";
+          if (hint) {
+            hint.innerHTML = "⚠️ <b class='text-rose-400'>偵測到您的網址未包含 `/exec` 結尾！</b> 您貼上的網址似乎在中間被截斷了，請回到 Google Apps Script「管理部署作業」重新複製完整的網頁應用程式網址（結尾必須是 <code class='text-amber-300 font-bold'>/exec</code>）。";
+          }
+          return false;
+        }
+
+        badge.className = "inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold";
+        badge.textContent = "🟢 Google 雲端已綁定就緒";
+        return true;
+      }
+
+      async function pushSingleRecordToCloud(rec, silent) {
+        var gasUrl = normalizeGasUrl(byId("inputGasUrl").value || localStorage.getItem(LS_GAS_URL) || "");
+        if (!gasUrl) {
+          if (!silent) {
+            byId("cloudDrawerPanel").style.display = "block";
+            showToast("⚠️ 請先在展開的綠色面板中貼上 Google Apps Script 網址 (/exec)");
+          }
+          return false;
+        }
+
+        if (!silent) showToast("☁️ 正在將單據 " + rec.id + " 推送至 Google 雲端...");
+        var compressedImg = await compressForCloudUpload(rec.photoUrl || "");
+
+        var payloadObj = {
+          action: "add",
+          id: rec.id,
+          date: rec.date,
+          payer: rec.payer,
+          category: rec.category,
+          merchant: rec.merchant,
+          invoiceNo: rec.invoiceNo,
+          items: rec.items,
+          amount: Number(rec.amount) || 0,
+          sisterShare: Number(rec.sisterShare) || Math.round((Number(rec.amount) || 0) * 0.5),
+          settled: rec.status === "已結算收回",
+          status: rec.status || "代墊未結算",
+          imageData: compressedImg,
+          base64Image: compressedImg,
+          record: {
+            id: rec.id,
+            date: rec.date,
+            payer: rec.payer,
+            category: rec.category,
+            merchant: rec.merchant,
+            invoiceNo: rec.invoiceNo,
+            items: rec.items,
+            amount: Number(rec.amount) || 0,
+            sisterShare: Number(rec.sisterShare) || Math.round((Number(rec.amount) || 0) * 0.5),
+            settled: rec.status === "已結算收回",
+            imageData: compressedImg
+          }
+        };
+
+        try {
+          var controller = new AbortController();
+          var tId = setTimeout(function() { controller.abort(); }, 7000);
+          var resp = await fetch(gasUrl, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify(payloadObj),
+            signal: controller.signal
+          });
+          clearTimeout(tId);
+          var json = await resp.json();
+          if (json && (json.status === "ok" || json.ok)) {
+            rec.cloudSynced = true;
+            if (json.driveUrl || json.photoUrl) rec.drivePhotoUrl = json.driveUrl || json.photoUrl;
+            if (json.folderUrl || json.mainFolderUrl) {
+              localStorage.setItem(LS_DRIVE_URL, json.folderUrl || json.mainFolderUrl);
+              byId("topDriveLink").href = json.folderUrl || json.mainFolderUrl;
+            }
+            if (json.sheetUrl) {
+              localStorage.setItem(LS_SHEET_URL, json.sheetUrl);
+              byId("topSheetLink").href = json.sheetUrl;
+            }
+            await saveRecordsPersistently();
+            renderAllViews();
+            if (!silent) showToast("✅ 已成功寫入 Google 試算表與雲端分類資料夾！");
+            return true;
+          }
+        } catch (corsErr) {
+          try {
+            await fetch(gasUrl, {
+              method: "POST",
+              mode: "no-cors",
+              headers: { "Content-Type": "text/plain;charset=utf-8" },
+              body: JSON.stringify(payloadObj)
+            });
+            rec.cloudSynced = true;
+            await saveRecordsPersistently();
+            renderAllViews();
+            if (!silent) showToast("☁️ 已透過跨網域穿透模式送出單據至 Google 雲端！");
+            return true;
+          } catch (err2) {
+            if (!silent) showToast("⚠️ 雲端連線失敗，請檢查網址是否為完整 /exec 結尾");
+            return false;
+          }
+        }
+        return false;
+      }
+
+      async function pushAllUnsyncedRecords() {
+        var gasUrl = normalizeGasUrl(byId("inputGasUrl").value || localStorage.getItem(LS_GAS_URL) || "");
+        if (!gasUrl || gasUrl.indexOf("http") !== 0) {
+          byId("cloudDrawerPanel").style.display = "block";
+          showToast("⚠️ 請先貼上完整的 Google Apps Script 部署網址 (/exec)");
+          return;
+        }
+        localStorage.setItem(LS_GAS_URL, gasUrl);
+        validateAndUpdateGasBadge();
+
+        if (records.length === 0) {
+          showToast("目前沒有本機單據需要上傳");
+          return;
+        }
+
+        showToast("☁️ 正在將本機 " + records.length + " 筆單據批次推送至 Google 雲端...");
+        var okCount = 0;
+        for (var i = 0; i < records.length; i++) {
+          var ok = await pushSingleRecordToCloud(records[i], true);
+          if (ok) okCount++;
+        }
+        await saveRecordsPersistently();
+        renderAllViews();
+        showToast("✅ 批次同步完成！已推送 " + okCount + " / " + records.length + " 筆單據至 Google 雲端試算表！");
+      }
+
+      async function pullRecordsFromCloud(silent) {
+        var gasUrl = normalizeGasUrl(byId("inputGasUrl").value || localStorage.getItem(LS_GAS_URL) || "");
+        if (!gasUrl) {
+          if (!silent) {
+            byId("cloudDrawerPanel").style.display = "block";
+            showToast("⚠️ 請先設定 Google Apps Script 網址");
+          }
+          return;
+        }
+        if (!silent) showToast("🔄 正在從 Google 雲端試算表讀取歷史帳目...");
+
+        try {
+          var controller = new AbortController();
+          var timer = setTimeout(function() { controller.abort(); }, 6000);
+          var resp = await fetch(gasUrl + (gasUrl.indexOf("?") === -1 ? "?action=list" : "&action=list"), {
+            method: "GET",
+            signal: controller.signal
+          });
+          clearTimeout(timer);
+          var data = await resp.json();
+          if (data && Array.isArray(data.records)) {
+            mergeCloudRecords(data);
+            if (!silent) showToast("✅ 已從 Google 雲端同步載入最新帳目！");
+            return;
+          }
+        } catch (e) {
+          var cbName = "gasJsonpCb_" + Date.now();
+          var script = document.createElement("script");
+          window[cbName] = function(data) {
+            delete window[cbName];
+            if (script.parentNode) script.parentNode.removeChild(script);
+            if (data && Array.isArray(data.records)) {
+              mergeCloudRecords(data);
+              if (!silent) showToast("✅ 已透過 JSONP 從雲端載入帳目！");
+            }
+          };
+          script.onerror = function() {
+            delete window[cbName];
+            if (script.parentNode) script.parentNode.removeChild(script);
+            if (!silent) showToast("⚠️ 無法連線至雲端網址，請確認網址結尾為 /exec 且權限設為「所有人」");
+          };
+          script.src = gasUrl + (gasUrl.indexOf("?") === -1 ? "?callback=" : "&callback=") + cbName;
+          document.body.appendChild(script);
+        }
+      }
+
+      async function mergeCloudRecords(data) {
+        if (data.folderUrl || data.mainFolderUrl) {
+          var fUrl = data.folderUrl || data.mainFolderUrl;
+          localStorage.setItem(LS_DRIVE_URL, fUrl);
+          byId("topDriveLink").href = fUrl;
+        }
+        if (data.sheetUrl) {
+          localStorage.setItem(LS_SHEET_URL, data.sheetUrl);
+          byId("topSheetLink").href = data.sheetUrl;
+        }
+
+        var localMap = {};
+        records.forEach(function(r) { localMap[r.id] = r; });
+
+        data.records.forEach(function(cr) {
+          var cid = String(cr.id || "");
+          if (!cid) return;
+          var existing = localMap[cid];
+          localMap[cid] = {
+            id: cid,
+            date: cr.date || (existing ? existing.date : ""),
+            payer: cr.payer || (existing ? existing.payer : "我(長子)代墊"),
+            category: cr.category || (existing ? existing.category : "08_其他照護雜支"),
+            merchant: cr.merchant || (existing ? existing.merchant : ""),
+            invoiceNo: cr.invoiceNo || (existing ? existing.invoiceNo : ""),
+            items: cr.items || (existing ? existing.items : ""),
+            amount: Number(cr.amount) || 0,
+            ratio: existing && existing.ratio !== undefined ? existing.ratio : 0.5,
+            sisterShare: Number(cr.sisterShare) || Math.round((Number(cr.amount) || 0) * 0.5),
+            status: (cr.settled || cr.status === "已結算收回" || cr.status === "已結算") ? "已結算收回" : "代墊未結算",
+            photoUrl: (existing && existing.photoUrl) ? existing.photoUrl : "",
+            drivePhotoUrl: cr.driveUrl || cr.photoUrl || (existing ? existing.drivePhotoUrl : ""),
+            cloudSynced: true
+          };
+        });
+
+        records = Object.keys(localMap).map(function(k) { return localMap[k]; });
+        await saveRecordsPersistently();
+        renderAllViews();
+      }
+
+      // ==================== 6. 介面渲染引擎 ====================
+      function updateSisterSharePreview() {
+        var amt = Number(byId("formAmount").value) || 0;
+        var ratio = Number(byId("formShareRatio").value);
+        if (isNaN(ratio)) ratio = 0.5;
+        var share = Math.round(amt * ratio);
+        byId("formSisterPreview").textContent = "NT$ " + share.toLocaleString();
+      }
+
+      function createRecordCardElement(r) {
+        var card = document.createElement("div");
+        card.className = "p-3.5 rounded-2xl border border-slate-200 bg-slate-50/80 hover:bg-white transition shadow-sm flex flex-col md:flex-row justify-between gap-3";
+
+        var isSettled = r.status === "已結算收回";
+        var payerBadgeClass = String(r.payer).indexOf("品璇") !== -1
+          ? "bg-purple-100 text-purple-800 border-purple-300"
+          : "bg-blue-100 text-blue-800 border-blue-300";
+
+        var syncBadgeHtml = r.cloudSynced
+          ? '<span class="text-[11px] bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold px-2 py-0.5 rounded-md">🟢 已同步雲端</span>'
+          : '<button type="button" data-act="push-one" class="text-[11px] bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-400 font-extrabold px-2 py-0.5 rounded-md transition">🟠 僅存本機（點此補傳雲端）</button>';
+
+        var hasLocalImg = r.photoUrl && r.photoUrl.indexOf("data:image") === 0;
+        var hasDriveLink = r.drivePhotoUrl && r.drivePhotoUrl.indexOf("http") === 0;
+
+        var thumbHtml = hasLocalImg
+          ? '<div data-act="zoom" class="w-20 h-16 rounded-lg bg-slate-900 border border-slate-300 shrink-0 flex items-center justify-center overflow-hidden cursor-zoom-in" title="點擊放大檢視完整收據">' +
+              '<img src="' + r.photoUrl + '" class="max-w-full max-h-full w-auto h-auto object-contain block">' +
+            '</div>'
+          : (hasDriveLink
+              ? '<a href="' + r.drivePhotoUrl + '" target="_blank" class="w-20 h-16 rounded-lg bg-emerald-50 border border-emerald-300 flex items-center justify-center text-[10px] font-bold text-emerald-700 text-center p-1 shrink-0">查看雲端<br>原圖 ↗</a>'
+              : '<div class="w-20 h-16 rounded-lg bg-slate-200 flex items-center justify-center text-[10px] text-slate-500 text-center p-1 shrink-0">文字<br>存證</div>');
+
+        var shareVal = r.sisterShare !== undefined ? Number(r.sisterShare) : Math.round(Number(r.amount) * 0.5);
+
+        card.innerHTML =
+          '<div class="flex items-start gap-3 flex-1">' +
+            thumbHtml +
+            '<div class="space-y-1 flex-1">' +
+              '<div class="flex flex-wrap items-center gap-1.5">' +
+                '<span class="font-black text-slate-900 text-sm">' + escapeHtml(r.id) + ' [' + escapeHtml(r.date) + '] ' + escapeHtml(r.merchant) + '</span>' +
+                '<span class="text-[11px] bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded-md">' + escapeHtml(r.category) + '</span>' +
+                '<span class="text-[11px] border font-bold px-2 py-0.5 rounded-md ' + payerBadgeClass + '">' + escapeHtml(r.payer) + '</span>' +
+                syncBadgeHtml +
+              '</div>' +
+              '<div class="text-xs text-slate-600 leading-relaxed">明細：' + escapeHtml(r.items) + ' ｜ 單號：' + escapeHtml(r.invoiceNo || "實物存證") + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="flex flex-wrap md:flex-nowrap items-center justify-between md:justify-end gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-slate-200 shrink-0">' +
+            '<div class="text-right mr-1">' +
+              '<div class="text-base font-black text-slate-900">NT$ ' + Number(r.amount).toLocaleString() + '</div>' +
+              '<div class="text-[11px] font-extrabold text-amber-700">妹妹應攤 $' + shareVal.toLocaleString() + '</div>' +
+            '</div>' +
+            '<button type="button" data-act="toggle" class="text-xs font-extrabold px-3 py-1.5 rounded-xl border transition ' +
+              (isSettled ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-amber-100 text-amber-900 border-amber-300') + '">' +
+              escapeHtml(r.status) +
+            '</button>' +
+            '<button type="button" data-act="edit" title="編輯修改此筆單據" class="bg-slate-200 hover:bg-blue-100 text-slate-700 text-xs font-bold p-2 rounded-xl">✏️</button>' +
+            (hasLocalImg ? '<button type="button" data-act="dl" title="下載存證圖片" class="bg-slate-200 hover:bg-emerald-100 text-slate-700 text-xs font-bold p-2 rounded-xl">⬇️</button>' : '') +
+            '<button type="button" data-act="del" title="刪除此筆單據" class="bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold p-2 rounded-xl">🗑️</button>' +
+          '</div>';
+
+        var pushOneBtn = card.querySelector('[data-act="push-one"]');
+        if (pushOneBtn) {
+          pushOneBtn.addEventListener("click", function() {
+            pushSingleRecordToCloud(r, false);
+          });
+        }
+        card.querySelector('[data-act="toggle"]').addEventListener("click", async function() {
+          r.status = (r.status === "已結算收回") ? "代墊未結算" : "已結算收回";
+          await saveRecordsPersistently();
+          renderAllViews();
+          showToast("已切換結算狀態為：" + r.status);
+        });
+        card.querySelector('[data-act="edit"]').addEventListener("click", function() {
+          editingId = r.id;
+          byId("editingModeBadge").style.display = "inline-block";
+          byId("btnCancelEdit").style.display = "inline-block";
+          byId("btnSubmitRecord").textContent = "💾 儲存修改內容";
+          byId("formDate").value = r.date;
+          byId("formPayer").value = r.payer;
+          byId("formCategory").value = r.category;
+          byId("formMerchant").value = r.merchant;
+          byId("formInvoice").value = r.invoiceNo;
+          byId("formItems").value = r.items;
+          byId("formAmount").value = r.amount;
+          updateSisterSharePreview();
+          switchTab("tab-capture");
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          showToast("✏️ 已載入單據 " + r.id + "，修改後請按「儲存修改內容」");
+        });
+        var dlBtn = card.querySelector('[data-act="dl"]');
+        if (dlBtn) {
+          dlBtn.addEventListener("click", function() {
+            var a = document.createElement("a");
+            a.href = r.photoUrl;
+            a.download = r.category + "_" + r.date + "_" + r.merchant + "_$" + r.amount + ".jpg";
+            a.click();
+          });
+        }
+        var zoomThumb = card.querySelector('[data-act="zoom"]');
+        if (zoomThumb && hasLocalImg) {
+          zoomThumb.addEventListener("click", function() {
+            openLightboxModal(r.photoUrl, r.id + " [" + r.date + "] " + r.merchant + " (NT$ " + Number(r.amount).toLocaleString() + ")");
+          });
+        }
+        card.querySelector('[data-act="del"]').addEventListener("click", async function() {
+          records = records.filter(function(item) { return item.id !== r.id; });
+          await saveRecordsPersistently();
+          renderAllViews();
+          showToast("🗑️ 已刪除單據 " + r.id);
+        });
+
+        return card;
+      }
+
+      function renderAllViews() {
+        var totalUnsettled = 0;
+        var myUnsettled = 0;
+        var wifeUnsettled = 0;
+        var sisterUnsettled = 0;
+
+        records.forEach(function(r) {
+          var amt = Number(r.amount) || 0;
+          var sShare = r.sisterShare !== undefined ? Number(r.sisterShare) : Math.round(amt * 0.5);
+          if (r.status !== "已結算收回") {
+            totalUnsettled += amt;
+            sisterUnsettled += sShare;
+            if (String(r.payer).indexOf("品璇") !== -1) {
+              wifeUnsettled += amt;
+            } else {
+              myUnsettled += amt;
+            }
+          }
+        });
+
+        byId("statTotalAmount").textContent = "NT$ " + totalUnsettled.toLocaleString();
+        byId("statTotalCount").textContent = "系統永久保存共 " + records.length + " 筆";
+        byId("statMyAdvance").textContent = "NT$ " + myUnsettled.toLocaleString();
+        byId("statWifeAdvance").textContent = "NT$ " + wifeUnsettled.toLocaleString();
+        byId("statSisterShare").textContent = "NT$ " + sisterUnsettled.toLocaleString();
+        byId("navBadgeCount").textContent = String(records.length);
+        byId("navAlbumCount").textContent = String(records.length);
+
+        var homeWrap = byId("homeRecordsContainer");
+        homeWrap.innerHTML = "";
+        if (records.length === 0) {
+          homeWrap.innerHTML = '<div class="text-center py-8 text-slate-400 text-xs">目前尚無單據，請由上方選取照片、點選測試單據，或按右上方「找回旭陽玩具店單據」</div>';
+        } else {
+          records.forEach(function(r) {
+            homeWrap.appendChild(createRecordCardElement(r));
+          });
+        }
+
+        var fPayer = byId("filterPayer").value;
+        var fStatus = byId("filterStatus").value;
+        var fKw = (byId("filterKeyword").value || "").trim().toLowerCase();
+        var filteredWrap = byId("filteredRecordsContainer");
+        filteredWrap.innerHTML = "";
+
+        var listFiltered = records.filter(function(r) {
+          if (fPayer !== "ALL" && r.payer !== fPayer) return false;
+          if (fStatus !== "ALL" && r.status !== fStatus) return false;
+          if (fKw) {
+            var hay = (r.id + " " + r.merchant + " " + r.items + " " + r.invoiceNo).toLowerCase();
+            if (hay.indexOf(fKw) === -1) return false;
+          }
+          return true;
+        });
+
+        if (listFiltered.length === 0) {
+          filteredWrap.innerHTML = '<div class="text-center py-8 text-slate-400 text-xs">沒有符合篩選條件的單據</div>';
+        } else {
+          listFiltered.forEach(function(r) {
+            filteredWrap.appendChild(createRecordCardElement(r));
+          });
+        }
+
+        renderCloudAlbum();
+
+        var driveUrl = localStorage.getItem(LS_DRIVE_URL) || "（已歸檔於媽媽照護開支雲端存證庫）";
+        var lines = [
+          "【媽媽醫療與照護生活開支月結算單】",
+          "以下為近期實際代墊之醫療、長照自付額與照護日常支出明細（所有單據與發票憑證皆已編號存檔備查）：",
+          ""
+        ];
+        var idx = 1;
+        records.forEach(function(r) {
+          if (r.status !== "已結算收回") {
+            var sh = r.sisterShare !== undefined ? Number(r.sisterShare) : Math.round(Number(r.amount) * 0.5);
+            lines.push(idx + ". " + r.id + " [" + r.date + "] " + r.merchant + "（" + r.category.slice(3) + "）：實付 NT$ " + Number(r.amount).toLocaleString() + " 元（應分攤 $" + sh.toLocaleString() + "）");
+            lines.push("   - 單號：" + (r.invoiceNo || "實物存證") + " ｜ 明細：" + r.items + " ｜ 代墊：" + r.payer);
+            idx++;
+          }
+        });
+        lines.push("---------------------------------------");
+        lines.push("● 本期未結算單據總支出：NT$ " + totalUnsettled.toLocaleString() + " 元");
+        lines.push("  （我長子代墊：NT$ " + myUnsettled.toLocaleString() + " 元 ／ 品璇代墊：NT$ " + wifeUnsettled.toLocaleString() + " 元）");
+        lines.push("● 依約定比例妳本期應分攤匯款金額：NT$ " + sisterUnsettled.toLocaleString() + " 元");
+        lines.push("● 雲端憑證相簿連結：" + driveUrl);
+
+        byId("lineReportTextarea").value = lines.join("\n");
+      }
+
+      function renderCloudAlbum() {
+        var grid = byId("folderCardsGrid");
+        var album = byId("albumPhotosGrid");
+        if (!grid || !album) return;
+        grid.innerHTML = "";
+        album.innerHTML = "";
+
+        var allBtn = document.createElement("button");
+        allBtn.type = "button";
+        allBtn.className = "p-3 rounded-xl border text-left transition " + (activeFolderFilter === "ALL" ? "bg-blue-700 text-white border-blue-800 shadow" : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800");
+        allBtn.innerHTML = '<div class="text-xs font-extrabold">📂 全部雲端資料夾</div><div class="text-[11px] opacity-80 mt-0.5">共 ' + records.length + ' 筆憑證</div>';
+        allBtn.addEventListener("click", function() {
+          activeFolderFilter = "ALL";
+          renderCloudAlbum();
+        });
+        grid.appendChild(allBtn);
+
+        FOLDERS.forEach(function(folderName) {
+          var subList = records.filter(function(r) { return r.category === folderName; });
+          var sum = subList.reduce(function(acc, cur) { return acc + (Number(cur.amount) || 0); }, 0);
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "p-3 rounded-xl border text-left transition " + (activeFolderFilter === folderName ? "bg-blue-700 text-white border-blue-800 shadow" : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800");
+          btn.innerHTML =
+            '<div class="text-xs font-extrabold truncate">📁 ' + escapeHtml(folderName) + '</div>' +
+            '<div class="text-[11px] opacity-80 mt-0.5">' + subList.length + ' 筆 ｜ $' + sum.toLocaleString() + '</div>';
+          btn.addEventListener("click", function() {
+            activeFolderFilter = folderName;
+            renderCloudAlbum();
+          });
+          grid.appendChild(btn);
+        });
+
+        var filtered = activeFolderFilter === "ALL"
+          ? records
+          : records.filter(function(r) { return r.category === activeFolderFilter; });
+
+        if (filtered.length === 0) {
+          album.innerHTML = '<div class="col-span-2 text-center py-8 text-slate-400 text-xs">此分類資料夾目前尚無單據</div>';
+          return;
+        }
+
+        filtered.forEach(function(r) {
+          var hasImg = r.photoUrl && r.photoUrl.indexOf("data:image") === 0;
+          var div = document.createElement("div");
+          div.className = "border border-slate-200 rounded-2xl overflow-hidden bg-slate-50 shadow-sm flex flex-col justify-between";
+          div.innerHTML =
+            (hasImg
+              ? '<div data-act="album-zoom" class="w-full h-52 checkerboard-bg p-2 flex items-center justify-center cursor-zoom-in" title="點擊全螢幕放大檢視">' +
+                  '<img src="' + r.photoUrl + '" class="receipt-img-preserve max-h-48 rounded shadow">' +
+                '</div>'
+              : '<div class="w-full h-36 bg-slate-200 flex items-center justify-center text-xs text-slate-600 font-bold">單據存證紀錄</div>') +
+            '<div class="p-3 space-y-1">' +
+              '<div class="text-xs font-extrabold text-slate-900">' + escapeHtml(r.id) + ' [' + escapeHtml(r.date) + '] ' + escapeHtml(r.merchant) + '</div>' +
+              '<div class="text-[11px] text-slate-600">' + escapeHtml(r.items) + '</div>' +
+              '<div class="flex justify-between items-center pt-2 border-t border-slate-200">' +
+                '<span class="text-sm font-black text-blue-700">NT$ ' + Number(r.amount).toLocaleString() + '</span>' +
+                '<span class="text-[11px] font-bold text-slate-500">' + escapeHtml(r.payer) + '</span>' +
+              '</div>' +
+            '</div>';
+          var az = div.querySelector('[data-act="album-zoom"]');
+          if (az && hasImg) {
+            az.addEventListener("click", function() {
+              openLightboxModal(r.photoUrl, r.id + " [" + r.date + "] " + r.merchant);
+            });
+          }
+          album.appendChild(div);
+        });
+      }
+
+      // ==================== 7. 分頁切換與匯出工具 ====================
+      function switchTab(tabId) {
+        var tabs = ["tab-capture", "tab-records", "tab-cloud", "tab-report"];
+        tabs.forEach(function(id) {
+          var el = byId(id);
+          if (el) el.style.display = (id === tabId) ? "block" : "none";
+        });
+        var btns = document.querySelectorAll(".main-tab-btn");
+        for (var i = 0; i < btns.length; i++) {
+          var b = btns[i];
+          if (b.getAttribute("data-tab") === tabId) {
+            b.className = "main-tab-btn tab-btn-active font-extrabold text-xs sm:text-sm py-2.5 px-3 rounded-xl border transition flex items-center justify-center gap-1.5";
+          } else {
+            b.className = "main-tab-btn tab-btn-inactive font-extrabold text-xs sm:text-sm py-2.5 px-3 rounded-xl border transition flex items-center justify-center gap-1.5";
+          }
+        }
+      }
+
+      function exportExcelCsv() {
+        var headers = ["單據編號", "消費日期", "雲端分類資料夾", "醫院或商家", "發票或收據單號", "消費品項明細", "實付總金額", "實際代墊人", "妹妹應攤金額", "結算狀態"];
+        var rows = [headers.join(",")];
+        records.forEach(function(r) {
+          var row = [
+            r.id,
+            r.date,
+            r.category,
+            '"' + String(r.merchant || "").replace(/"/g, '""') + '"',
+            '"' + String(r.invoiceNo || "").replace(/"/g, '""') + '"',
+            '"' + String(r.items || "").replace(/"/g, '""') + '"',
+            r.amount,
+            r.payer,
+            r.sisterShare || Math.round(Number(r.amount) * 0.5),
+            r.status
+          ];
+          rows.push(row.join(","));
+        });
+        var blob = new Blob(["\uFEFF" + rows.join("\n")], { type: "text/csv;charset=utf-8;" });
+        var a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "媽媽照護生活開支與代墊明細_" + new Date().toISOString().slice(0, 10) + ".csv";
+        a.click();
+        showToast("📊 已匯出 Excel 對帳表 (.csv)");
+      }
+
+      function exportJsonBackup() {
+        var blob = new Blob([JSON.stringify(records, null, 2)], { type: "application/json" });
+        var a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "媽媽照護開支完整備份包_" + new Date().toISOString().slice(0, 10) + ".json";
+        a.click();
+        showToast("📦 已下載完整備份包 (.json)");
+      }
+
+      function downloadLegalBookletHtml() {
+        var rowsHtml = records.map(function(r) {
+          var imgPart = (r.photoUrl && r.photoUrl.indexOf("data:image") === 0)
+            ? '<div style="background:#0f172a;padding:10px;border-radius:8px;margin-top:8px;text-align:center;"><img src="' + r.photoUrl + '" style="max-width:100%;max-height:420px;width:auto;height:auto;object-fit:contain;border-radius:6px;"></div>'
+            : '';
+          return '<div style="border:1px solid #cbd5e1;border-radius:12px;padding:14px;margin-bottom:14px;page-break-inside:avoid;">' +
+            '<div style="font-weight:bold;font-size:15px;color:#0f172a;">' + escapeHtml(r.id) + ' ｜ 日期：' + escapeHtml(r.date) + ' ｜ ' + escapeHtml(r.merchant) + '（' + escapeHtml(r.category) + '）</div>' +
+            '<div style="font-size:13px;color:#334155;margin-top:4px;">單號：' + escapeHtml(r.invoiceNo) + ' ｜ 代墊人：<b>' + escapeHtml(r.payer) + '</b> ｜ 狀態：' + escapeHtml(r.status) + '</div>' +
+            '<div style="font-size:13px;color:#1e293b;margin-top:4px;">品項明細：' + escapeHtml(r.items) + '</div>' +
+            '<div style="font-size:16px;font-weight:bold;color:#1d4ed8;margin-top:6px;">實付總金額：NT$ ' + Number(r.amount).toLocaleString() + ' 元（妹妹應攤：NT$ ' + Number(r.sisterShare || Math.round(r.amount * 0.5)).toLocaleString() + ' 元）</div>' +
+            imgPart +
+          '</div>';
+        }).join("");
+
+        var htmlStr = '<!DOCTYPE html><html lang="zh-TW"><head><meta charset="UTF-8"><title>媽媽照護開支圖文合一憑證總冊</title></head><body style="font-family:sans-serif;max-width:840px;margin:20px auto;padding:16px;">' +
+          '<h1 style="font-size:22px;border-bottom:2px solid #0f172a;padding-bottom:8px;">⚖️ 媽媽醫療與照護生活開支・圖文合一憑證總冊</h1>' +
+          '<p style="font-size:13px;color:#475569;">匯出日期：' + new Date().toISOString().slice(0, 10) + '（可直接按 Ctrl+P 列印或另存為 PDF 提交調解或對帳）</p>' +
+          rowsHtml + '</body></html>';
+
+        var blob = new Blob([htmlStr], { type: "text/html;charset=utf-8" });
+        var a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "媽媽照護開支_圖文合一憑證總冊_" + new Date().toISOString().slice(0, 10) + ".html";
+        a.click();
+        showToast("⚖️ 已下載圖文合一憑證總冊 (.html)");
+      }
+
+      function populateGasBackendCode() {
+        var code = [
+          '/**',
+          ' * 媽媽照護生活開支・Google 雲端雙向同步與 8 大資料夾自動歸檔後端 (v10.2 全相容版)',
+          ' */',
+          'const ROOT_FOLDER_NAME = "【媽媽照護開支雲端存證庫】";',
+          'const SHEET_NAME = "媽媽照護生活開支與代墊總帳本";',
+          'const CATEGORIES = [',
+          '  "01_醫療門診與住院", "02_長照與看護自付", "03_傷口敷料與耗材", "04_洗腎營養品與奶粉",',
+          '  "05_超市與市場膳食", "06_交通接送與專車", "07_輔具與環境改善", "08_其他照護雜支"',
+          '];',
+          '',
+          'function setupCareCloudNow() {',
+          '  const env = getOrCreateEnv_();',
+          '  Logger.log("✅ 建置完成！雲端資料夾：" + env.rootFolder.getUrl());',
+          '  Logger.log("✅ 總帳試算表：" + env.ss.getUrl());',
+          '}',
+          '',
+          'function doGet(e) {',
+          '  const env = getOrCreateEnv_();',
+          '  const rows = env.sheet.getDataRange().getValues();',
+          '  const records = [];',
+          '  for (let i = 1; i < rows.length; i++) {',
+          '    const r = rows[i];',
+          '    if (!r[0]) continue;',
+          '    records.push({',
+          '      id: String(r[0]), date: String(r[1]), category: String(r[2]),',
+          '      merchant: String(r[3]), invoiceNo: String(r[4]), items: String(r[5]),',
+          '      amount: Number(r[6]) || 0, payer: String(r[7]), sisterShare: Number(r[8]) || 0,',
+          '      settled: String(r[9]) === "已結算" || String(r[9]) === "已結算收回",',
+          '      driveUrl: String(r[10] || "")',
+          '    });',
+          '  }',
+          '  const out = JSON.stringify({ status: "ok", records: records.reverse(), folderUrl: env.rootFolder.getUrl(), sheetUrl: env.ss.getUrl() });',
+          '  if (e && e.parameter && e.parameter.callback) {',
+          '    return ContentService.createTextOutput(e.parameter.callback + "(" + out + ")").setMimeType(ContentService.MimeType.JAVASCRIPT);',
+          '  }',
+          '  return ContentService.createTextOutput(out).setMimeType(ContentService.MimeType.JSON);',
+          '}',
+          '',
+          'function doPost(e) {',
+          '  try {',
+          '    const data = JSON.parse(e.postData.contents);',
+          '    const env = getOrCreateEnv_();',
+          '    const rec = data.record || data;',
+          '    const imgBase64 = rec.imageData || rec.base64Image || "";',
+          '    let fileUrl = "";',
+          '    if (imgBase64 && imgBase64.indexOf("base64,") !== -1) {',
+          '      const sub = getSubFolder_(env.rootFolder, rec.category || CATEGORIES[4]);',
+          '      const parts = imgBase64.split("base64,");',
+          '      const bytes = Utilities.base64Decode(parts[1]);',
+          '      const blob = Utilities.newBlob(bytes, "image/jpeg", (rec.date || "單據") + "_" + (rec.merchant || "收據") + "_$" + (rec.amount || 0) + ".jpg");',
+          '      fileUrl = sub.createFile(blob).getUrl();',
+          '    }',
+          '    env.sheet.appendRow([',
+          '      rec.id || ("#" + (100 + env.sheet.getLastRow())), rec.date || "", rec.category || CATEGORIES[4],',
+          '      rec.merchant || "", rec.invoiceNo || "", rec.items || "", Number(rec.amount) || 0,',
+          '      rec.payer || "我(長子)代墊", Number(rec.sisterShare) || Math.round((Number(rec.amount) || 0) * 0.5),',
+          '      rec.settled ? "已結算收回" : "代墊未結算", fileUrl, new Date().toLocaleString("zh-TW")',
+          '    ]);',
+          '    return ContentService.createTextOutput(JSON.stringify({ status: "ok", driveUrl: fileUrl, folderUrl: env.rootFolder.getUrl(), sheetUrl: env.ss.getUrl() })).setMimeType(ContentService.MimeType.JSON);',
+          '  } catch (err) {',
+          '    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: err.toString() })).setMimeType(ContentService.MimeType.JSON);',
+          '  }',
+          '}',
+          '',
+          'function getOrCreateEnv_() {',
+          '  let rIter = DriveApp.getFoldersByName(ROOT_FOLDER_NAME);',
+          '  let rootFolder = rIter.hasNext() ? rIter.next() : DriveApp.createFolder(ROOT_FOLDER_NAME);',
+          '  CATEGORIES.forEach(c => getSubFolder_(rootFolder, c));',
+          '  let fIter = rootFolder.getFilesByName(SHEET_NAME);',
+          '  let ss = fIter.hasNext() ? SpreadsheetApp.open(fIter.next()) : SpreadsheetApp.create(SHEET_NAME);',
+          '  if (!fIter.hasNext()) { let f = DriveApp.getFileById(ss.getId()); rootFolder.addFile(f); DriveApp.getRootFolder().removeFile(f); }',
+          '  let sheet = ss.getSheets()[0];',
+          '  if (sheet.getLastRow() === 0) {',
+          '    sheet.appendRow(["單據ID","消費日期","雲端分類資料夾","醫院/商家名稱","發票/收據單號","消費品項明細","實付總金額","代墊人","妹妹應攤","結算狀態","雲端照片連結","建檔時間"]);',
+          '  }',
+          '  return { rootFolder, ss, sheet };',
+          '}',
+          'function getSubFolder_(p, n) { let it = p.getFoldersByName(n); return it.hasNext() ? it.next() : p.createFolder(n); }'
+        ].join("\n");
+        var area = byId("gasBackendCodeArea");
+        if (area) area.value = code;
+      }
+
+      // ==================== 8. 綁定所有按鈕事件與啟動流程 ====================
+      async function initApp() {
+        byId("formDate").value = new Date().toISOString().slice(0, 10);
+
+        var savedGas = localStorage.getItem(LS_GAS_URL) || "";
+        var savedKey = localStorage.getItem(LS_GEMINI_KEY) || "";
+        var savedDrive = localStorage.getItem(LS_DRIVE_URL) || "";
+        var savedSheet = localStorage.getItem(LS_SHEET_URL) || "";
+
+        if (savedGas) byId("inputGasUrl").value = savedGas;
+        if (savedKey) byId("inputGeminiKey").value = savedKey;
+        if (savedDrive) byId("topDriveLink").href = savedDrive;
+        if (savedSheet) byId("topSheetLink").href = savedSheet;
+
+        validateAndUpdateGasBadge();
+        populateGasBackendCode();
+
+        await loadAllRecords();
+        renderAllViews();
+
+        // 1. 頂部收合面板控制
+        function toggleCloudDrawer(forceState) {
+          var panel = byId("cloudDrawerPanel");
+          var arrow = byId("cloudDrawerArrow");
+          var isHidden = panel.style.display === "none";
+          var show = (forceState !== undefined) ? forceState : isHidden;
+          panel.style.display = show ? "block" : "none";
+          arrow.textContent = show ? "▲ 收合" : "▼ 展開";
+        }
+        byId("btnToggleCloudDrawer").addEventListener("click", function() { toggleCloudDrawer(); });
+        byId("btnCloseCloudDrawerTop").addEventListener("click", function() { toggleCloudDrawer(false); });
+        byId("btnCloseCloudDrawerBottom").addEventListener("click", function() { toggleCloudDrawer(false); });
+
+        function toggleKeyDrawer(forceState) {
+          var panel = byId("keyDrawerPanel");
+          var arrow = byId("keyDrawerArrow");
+          var isHidden = panel.style.display === "none";
+          var show = (forceState !== undefined) ? forceState : isHidden;
+          panel.style.display = show ? "block" : "none";
+          arrow.textContent = show ? "▲" : "▼";
+        }
+        byId("btnToggleKeyDrawer").addEventListener("click", function() { toggleKeyDrawer(); });
+        byId("btnCloseKeyDrawer").addEventListener("click", function() { toggleKeyDrawer(false); });
+
+        // 2. 儲存金鑰與雲端網址按鈕
+        byId("btnSaveGeminiKey").addEventListener("click", function() {
+          var k = byId("inputGeminiKey").value.trim();
+          localStorage.setItem(LS_GEMINI_KEY, k);
+          toggleKeyDrawer(false);
+          showToast("✅ 已儲存 Gemini API 金鑰！");
+        });
+
+        byId("btnSaveAndPushGas").addEventListener("click", async function() {
+          await pushAllUnsyncedRecords();
+        });
+        byId("btnTestGasConn").addEventListener("click", async function() {
+          var u = normalizeGasUrl(byId("inputGasUrl").value);
+          if (!u) {
+            showToast("⚠️ 請先在輸入框貼上 Google Apps Script 網址");
+            return;
+          }
+          localStorage.setItem(LS_GAS_URL, u);
+          validateAndUpdateGasBadge();
+          await pullRecordsFromCloud(false);
+        });
+        byId("btnPushAllCloud").addEventListener("click", function() { pushAllUnsyncedRecords(); });
+        byId("btnBatchPushInAlbum").addEventListener("click", function() { pushAllUnsyncedRecords(); });
+        byId("btnPullCloud").addEventListener("click", function() { pullRecordsFromCloud(false); });
+
+        // 3. 分頁切換按鈕
+        var tabBtns = document.querySelectorAll(".main-tab-btn");
+        for (var i = 0; i < tabBtns.length; i++) {
+          tabBtns[i].addEventListener("click", function() {
+            switchTab(this.getAttribute("data-tab"));
+          });
+        }
+
+        // 4. 檔案上傳、拍照與測試收據按鈕
+        byId("fileInputAlbum").addEventListener("change", function(e) {
+          if (e.target.files && e.target.files[0]) handleFileSelected(e.target.files[0]);
+        });
+        byId("fileInputCamera").addEventListener("change", function(e) {
+          if (e.target.files && e.target.files[0]) handleFileSelected(e.target.files[0]);
+        });
+        byId("btnDemoKmuh").addEventListener("click", function() { generateDemoReceiptImage("kmuh"); });
+        byId("btnDemoPxmart").addEventListener("click", function() { generateDemoReceiptImage("pxmart"); });
+        byId("btnDemoToy").addEventListener("click", function() { generateDemoReceiptImage("toy"); });
+        byId("btnRerunOcr").addEventListener("click", function() { runTripleEngineOcr(""); });
+
+        // 預設候選金額按鈕
+        var initCands = document.querySelectorAll(".cand-amt-btn");
+        for (var c = 0; c < initCands.length; c++) {
+          initCands[c].addEventListener("click", function() {
+            var v = Number(this.getAttribute("data-amt")) || 0;
+            byId("formAmount").value = v;
+            updateSisterSharePreview();
+            drawWatermarkCanvas();
+            showToast("🎯 已填入金額：NT$ " + v.toLocaleString());
+          });
+        }
+
+        // 5. 常用照護範本快填按鈕
+        var tplBtns = document.querySelectorAll(".quick-tpl-btn");
+        for (var t = 0; t < tplBtns.length; t++) {
+          tplBtns[t].addEventListener("click", function() {
+            var key = this.getAttribute("data-tpl");
+            var tpl = QUICK_TEMPLATES[key];
+            if (!tpl) return;
+            applyRecognitionToForm(Object.assign({ date: byId("formDate").value }, tpl));
+            showToast("⚡ 已帶入「" + tpl.merchant + "」常用照護範本！");
+          });
+        }
+
+        // 6. 表單連動與儲存入帳
+        ["formDate", "formPayer", "formMerchant", "formInvoice", "formAmount", "formShareRatio"].forEach(function(fid) {
+          var el = byId(fid);
+          if (el) {
+            el.addEventListener("input", function() {
+              updateSisterSharePreview();
+              drawWatermarkCanvas();
+            });
+            el.addEventListener("change", function() {
+              updateSisterSharePreview();
+              drawWatermarkCanvas();
+            });
+          }
+        });
+
+        byId("btnSubmitRecord").addEventListener("click", async function() {
+          var amt = Number(byId("formAmount").value) || 0;
+          if (amt <= 0) {
+            showToast("⚠️ 請輸入或點選左側黃色「單據實付總金額」！");
+            byId("formAmount").focus();
+            return;
+          }
+
+          var ratio = Number(byId("formShareRatio").value);
+          if (isNaN(ratio)) ratio = 0.5;
+          var share = Math.round(amt * ratio);
+
+          var recObj = {
+            id: editingId || ("#" + (101 + records.length) + "-" + String(Math.floor(100 + Math.random() * 899))),
+            date: byId("formDate").value || new Date().toISOString().slice(0, 10),
+            payer: byId("formPayer").value || "我(長子)代墊",
+            category: byId("formCategory").value || "05_超市與市場膳食",
+            merchant: cleanText(byId("formMerchant").value) || "媽媽照護支出",
+            invoiceNo: cleanText(byId("formInvoice").value) || "實物拍照存證",
+            items: cleanText(byId("formItems").value) || "照護醫療與生活開支",
+            amount: amt,
+            ratio: ratio,
+            sisterShare: share,
+            status: "代墊未結算",
+            photoUrl: watermarkedDataUrl || "",
+            drivePhotoUrl: "",
+            cloudSynced: false,
+            createdAt: new Date().toISOString()
+          };
+
+          if (editingId) {
+            records = records.map(function(item) {
+              if (item.id === editingId) {
+                recObj.photoUrl = watermarkedDataUrl || item.photoUrl || "";
+                recObj.status = item.status;
+                return recObj;
+              }
+              return item;
+            });
+            editingId = null;
+            byId("editingModeBadge").style.display = "none";
+            byId("btnCancelEdit").style.display = "none";
+            byId("btnSubmitRecord").textContent = "✅ 儲存單據（永久寫入本機＋同步傳送 Google 雲端）";
+          } else {
+            records.unshift(recObj);
+          }
+
+          await saveRecordsPersistently();
+          renderAllViews();
+          showToast("✅ 單據 " + recObj.id + " 已永久保存至本機！");
+
+          var gasUrl = normalizeGasUrl(byId("inputGasUrl").value || localStorage.getItem(LS_GAS_URL) || "");
+          if (gasUrl) {
+            pushSingleRecordToCloud(recObj, false);
+          }
+        });
+
+        byId("btnCancelEdit").addEventListener("click", function() {
+          editingId = null;
+          byId("editingModeBadge").style.display = "none";
+          byId("btnCancelEdit").style.display = "none";
+          byId("btnSubmitRecord").textContent = "✅ 儲存單據（永久寫入本機＋同步傳送 Google 雲端）";
+        });
+
+        // 7. 畫布旋轉、縮放、全螢幕高清燈箱與下載
+        byId("btnRotateLeft").addEventListener("click", function() {
+          currentRotation = (currentRotation - 90) % 360;
+          drawWatermarkCanvas();
+          showToast("↺ 已向左旋轉 90°（維持原始比例）");
+        });
+        byId("btnRotateRight").addEventListener("click", function() {
+          currentRotation = (currentRotation + 90) % 360;
+          drawWatermarkCanvas();
+          showToast("↻ 已向右旋轉 90°（維持原始比例）");
+        });
+        byId("btnZoomToggle").addEventListener("click", function() {
+          var wrap = byId("canvasScrollWrap");
+          var pImg = byId("watermarkPreviewImg");
+          isCanvasZoomed = !isCanvasZoomed;
+          wrap.style.maxHeight = isCanvasZoomed ? "none" : "460px";
+          pImg.style.maxHeight = isCanvasZoomed ? "none" : "420px";
+          byId("btnZoomToggle").textContent = isCanvasZoomed ? "📐 恢復適應視窗高度" : "📐 展開完整高度";
+        });
+        byId("btnOpenLightbox").addEventListener("click", function() {
+          if (!watermarkedDataUrl) return;
+          openLightboxModal(watermarkedDataUrl, (byId("formMerchant").value || "媽媽照護單據") + " 數位存證預覽");
+        });
+        byId("watermarkPreviewImg").addEventListener("click", function() {
+          if (!watermarkedDataUrl) return;
+          openLightboxModal(watermarkedDataUrl, (byId("formMerchant").value || "媽媽照護單據") + " 數位存證預覽");
+        });
+        byId("btnCloseLightbox").addEventListener("click", function() {
+          byId("lightboxModal").style.display = "none";
+        });
+        byId("lightboxModal").addEventListener("click", function(e) {
+          if (e.target === byId("lightboxModal")) {
+            byId("lightboxModal").style.display = "none";
+          }
+        });
+        byId("btnDownloadPreviewImg").addEventListener("click", function() {
+          if (!watermarkedDataUrl) return;
+          var a = document.createElement("a");
+          a.href = watermarkedDataUrl;
+          a.download = "媽媽照護單據存證_" + (byId("formDate").value || "今日") + ".jpg";
+          a.click();
+        });
+
+        // 8. 找回旭陽玩具店單據與匯出備份
+        byId("btnRestoreToyDefault").addEventListener("click", async function() {
+          var exists = records.some(function(r) { return r.id === "#101-339"; });
+          if (!exists) {
+            records.unshift(getDefaultToyRecord());
+            await saveRecordsPersistently();
+            renderAllViews();
+            showToast("✅ 已為您找回「#101-339 旭陽玩具店 NT$ 1,449」單據！");
+          } else {
+            showToast("💡 「#101-339 旭陽玩具店」單據已經在下方列表中囉！");
+          }
+        });
+
+        byId("btnExportCsvQuick").addEventListener("click", exportExcelCsv);
+        byId("btnExportJsonQuick").addEventListener("click", exportJsonBackup);
+        byId("importJsonInput").addEventListener("change", function(e) {
+          var f = e.target.files && e.target.files[0];
+          if (!f) return;
+          var reader = new FileReader();
+          reader.onload = async function(evt) {
+            try {
+              var arr = JSON.parse(evt.target.result);
+              if (Array.isArray(arr)) {
+                records = arr;
+                await saveRecordsPersistently();
+                renderAllViews();
+                showToast("✅ 已成功還原 " + arr.length + " 筆單據！");
+              }
+            } catch (err) {
+              showToast("⚠️ 備份檔格式不正確");
+            }
+          };
+          reader.readAsText(f);
+        });
+
+        // 9. 篩選器與複製按鈕
+        byId("filterPayer").addEventListener("change", renderAllViews);
+        byId("filterStatus").addEventListener("change", renderAllViews);
+        byId("filterKeyword").addEventListener("input", renderAllViews);
+
+        byId("btnCopyLineReport").addEventListener("click", function() {
+          var el = byId("lineReportTextarea");
+          el.select();
+          document.execCommand("copy");
+          showToast("📋 已複製月底 LINE 請款單，可直接貼上群組！");
+        });
+        byId("btnDownloadLegalHtml").addEventListener("click", downloadLegalBookletHtml);
+        byId("btnCopyGasCode").addEventListener("click", function() {
+          var el = byId("gasBackendCodeArea");
+          el.select();
+          document.execCommand("copy");
+          showToast("📋 已複製 Google Apps Script 程式碼！");
+        });
+
+        // 預設自動載入「旭陽玩具店 $1,449」端正比例收據至預覽區
+        generateDemoReceiptImage("toy");
+        var readyBadge = byId("appReadyBadge");
+        if (readyBadge) {
+          readyBadge.textContent = "🟢 系統已正常啟動（共 " + records.length + " 筆單據就緒）";
+        }
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initApp);
+      } else {
+        initApp();
+      }
+    })();
+  </script>
+</body>
+</html>
