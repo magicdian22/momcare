@@ -1,0 +1,9 @@
+{
+  "name": "mom-care-expense-system",
+  "version": "13.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=18.x"
+  }
+}
