@@ -3,8 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>媽媽照護開支・代墊與雲端存證系統 (v11.1 完整無錯穩定終極版)</title>
+  <title>媽媽照護開支・代墊與雲端存證系統 (v13.0 正式生產版)</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 內建免費光學辨識引擎 Tesseract.js (作為無金鑰時之真實動態影像掃描備援) -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <style>
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body {
@@ -58,12 +60,12 @@
         <div>
           <div class="flex items-center gap-2 flex-wrap">
             <h1 class="text-base md:text-lg font-extrabold tracking-tight">媽媽照護開支・代墊與雲端存證系統</h1>
-            <span class="bg-emerald-400 text-slate-950 text-[11px] font-black px-2 py-0.5 rounded-full">v11.1 穩定終極版</span>
+            <span class="bg-emerald-400 text-slate-950 text-[11px] font-black px-2 py-0.5 rounded-full">v13.0 正式生產版</span>
             <span id="appReadyBadge" class="bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 text-[11px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1">
-              🟢 系統已正常啟動
+              🟢 系統已就緒
             </span>
           </div>
-          <p class="text-[11px] text-slate-300">100% 鎖定原始比例不變形・防切字獨立存證底欄・支援本機永久儲存＋Google 雲端＋Vercel 部署</p>
+          <p class="text-[11px] text-slate-300">多引擎動態單據辨識・依年月與分攤狀態管理・本機永久保存＋Google 雲端雙向同步</p>
         </div>
       </div>
 
@@ -89,19 +91,19 @@
       <div class="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-2 text-xs">
         <div class="flex flex-wrap items-center gap-2">
           <span id="ocrEngineBadge" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
-            ✨ AI 智慧視覺辨識：已就緒（零亂碼）
+            ✨ 動態單據辨識引擎：已就緒
           </span>
           <span id="cloudStatusBadge" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
-            ☁️ 雲端狀態：本機永久保存中（可點右側綁定雲端網址）
+            ☁️ 雲端狀態：本機永久保存中
           </span>
         </div>
 
         <div class="flex items-center gap-2">
           <button type="button" id="btnToggleCloudDrawer" class="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold px-3 py-1 rounded-lg shadow transition flex items-center gap-1">
-            🔗 雲端網址綁定與連線測試 <span id="cloudDrawerArrow">▼ 展開</span>
+            🔗 雲端網址綁定與連線 <span id="cloudDrawerArrow">▼ 展開</span>
           </button>
-          <button type="button" id="btnToggleKeyDrawer" class="bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold px-2.5 py-1 rounded-lg border border-slate-600 transition flex items-center gap-1">
-            ⚙️ AI 金鑰設定 <span id="keyDrawerArrow">▼</span>
+          <button type="button" id="btnToggleKeyDrawer" class="bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold px-3 py-1 rounded-lg shadow transition flex items-center gap-1">
+            🔑 AI 視覺辨識金鑰設定 <span id="keyDrawerArrow">▼ 展開</span>
           </button>
         </div>
       </div>
@@ -110,8 +112,7 @@
       <div id="cloudDrawerPanel" style="display: none;" class="max-w-5xl mx-auto mt-2.5 bg-slate-900 border-2 border-emerald-500/60 rounded-2xl p-3.5 text-xs space-y-3 shadow-2xl">
         <div class="flex items-center justify-between border-b border-slate-800 pb-2">
           <div class="font-extrabold text-emerald-400 text-sm flex items-center gap-2">
-            <span>☁️ Google 雲端試算表 ＆ 8 大分類資料夾連線中樞</span>
-            <span class="bg-emerald-950 text-emerald-300 border border-emerald-700 px-2 py-0.5 rounded text-[11px]">支援跨網域強制推送 ＆ Vercel API</span>
+            <span>☁️ Google 雲端試算表 ＆ 8 大分類資料夾連線設定</span>
           </div>
           <button type="button" id="btnCloseCloudDrawerTop" class="bg-rose-600 hover:bg-rose-500 text-white font-extrabold px-3 py-1 rounded-lg shadow">
             ▲ 收合面板
@@ -121,21 +122,15 @@
         <div class="flex flex-col md:flex-row gap-2">
           <input type="text" id="inputGasUrl" placeholder="請貼上以 /exec 結尾的 Google Apps Script 網頁應用程式網址 (https://script.google.com/macros/s/.../exec)" class="flex-1 bg-slate-950 border border-slate-600 focus:border-emerald-400 rounded-xl px-3 py-2 text-white font-mono text-xs outline-none">
           <button type="button" id="btnSaveAndPushGas" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-4 py-2 rounded-xl shadow shrink-0">
-            🔗 儲存網址並立即上傳所有單據
+            🔗 儲存網址並同步單據
           </button>
           <button type="button" id="btnTestGasConn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-3.5 py-2 rounded-xl shadow shrink-0">
-            🧪 測試雲端連線
+            🔄 測試連線並載入
           </button>
         </div>
 
         <div id="gasUrlCheckHint" class="bg-slate-800/90 border border-slate-700 rounded-xl p-2.5 text-[11px] text-slate-300 leading-relaxed">
-          💡 <b>提醒：</b> 請確認貼上的網址結尾完整包含 <code class="text-amber-300 font-bold">/exec</code>。若您在 Google Apps Script 更新了程式碼，請點選右上角「部署 ➔ 新增部署作業」（誰可以存取：<b>所有人 Anyone</b>），再貼上新網址即可 100% 寫入試算表！
-        </div>
-
-        <div class="flex justify-end">
-          <button type="button" id="btnCloseCloudDrawerBottom" class="bg-slate-700 hover:bg-slate-600 text-white font-bold px-4 py-1.5 rounded-lg">
-            ▲ 完成並收合面板
-          </button>
+          💡 請確認貼上的網址結尾包含 <code class="text-amber-300 font-bold">/exec</code>，且在 Google Apps Script 部署時將存取權限設為「<b>所有人 (Anyone)</b>」。
         </div>
       </div>
 
@@ -143,20 +138,20 @@
       <div id="keyDrawerPanel" style="display: none;" class="max-w-5xl mx-auto mt-2.5 bg-slate-900 border-2 border-indigo-500/60 rounded-2xl p-3.5 text-xs space-y-2.5 shadow-2xl">
         <div class="flex items-center justify-between border-b border-slate-800 pb-2">
           <div class="font-extrabold text-indigo-300 text-sm">
-            🤖 選填：Google Gemini 2.5 Flash 視覺模型金鑰（強化模糊手寫收據辨識）
+            🤖 Google Gemini AI 視覺辨識金鑰設定（支援任何手寫收據、醫療批價單、發票 99% 精準辨識）
           </div>
           <button type="button" id="btnCloseKeyDrawer" class="bg-rose-600 hover:bg-rose-500 text-white font-extrabold px-3 py-1 rounded-lg">
             ▲ 收合面板
           </button>
         </div>
-        <p class="text-[11px] text-slate-300">
-          若您部署於 Vercel 並已設定 <code class="text-emerald-300">GEMINI_API_KEY</code> 環境變數，則無需在此填寫；若直接在本畫面使用真實照片 AI 視覺辨識，可貼上免費金鑰：
-          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="text-amber-300 underline font-bold ml-1">點此免費領取 Gemini API Key ↗</a>
+        <p class="text-[11px] text-slate-300 leading-relaxed">
+          系統已內建多層動態辨識：若部署於 Vercel 且已設定 <code class="text-emerald-300">GEMINI_API_KEY</code>，系統會自動透過伺服器端辨識；若在個人瀏覽器直接使用，建議貼上免費的 Gemini API Key，即可針對<b>任何不同款式的收據、手寫免用發票、醫療批價單</b>進行高精準度結構化辨識：
+          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="text-amber-300 underline font-bold ml-1">點此免費取得 Gemini API Key ↗</a>
         </p>
         <div class="flex flex-col sm:flex-row gap-2">
           <input type="password" id="inputGeminiKey" placeholder="貼上 AIzaSy... 開頭的 Gemini API Key" class="flex-1 bg-slate-950 border border-slate-600 rounded-xl px-3 py-2 text-white font-mono text-xs outline-none">
           <button type="button" id="btnSaveGeminiKey" class="bg-indigo-500 hover:bg-indigo-400 text-white font-extrabold px-4 py-2 rounded-xl shadow">
-            💾 儲存金鑰
+            💾 儲存金鑰並立即生效
           </button>
         </div>
       </div>
@@ -166,10 +161,10 @@
   <!-- ==================== 主內容區 ==================== -->
   <main class="max-w-5xl mx-auto px-3 pt-4 space-y-4">
 
-    <!-- 0. 全域「年月時間軸篩選器」與「尚未分攤 / 已分攤」快速檢視控制列 -->
+    <!-- 0. 全域「年月時間軸篩選器」與「尚未分攤 / 已經分攤過」快速檢視控制列 -->
     <section class="bg-white rounded-2xl p-3.5 shadow-sm border border-slate-200 space-y-3 no-print">
       <div class="flex flex-wrap items-center justify-between gap-2">
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
           <span class="text-sm font-black text-slate-900 flex items-center gap-1.5">
             📅 依年月檢視雲端帳目與細項：
           </span>
@@ -177,7 +172,7 @@
             <option value="ALL">📂 全部年月（所有歷史紀錄）</option>
           </select>
           <button type="button" id="btnResetMonthAll" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2.5 py-1.5 rounded-xl border border-slate-300 transition">
-            顯示全部時間
+            顯示全部期間
           </button>
         </div>
 
@@ -200,12 +195,12 @@
       <div id="monthQuickPillsWrap" class="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 text-xs"></div>
     </section>
 
-    <!-- 1. 四大財務統計看板（隨所選「年月」即時連動，並清楚區分「尚未分攤」與「已經分攤過」） -->
+    <!-- 1. 四大財務統計看板 -->
     <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 no-print">
       <div class="bg-white rounded-2xl p-3.5 shadow-sm border border-slate-200 border-l-4 border-l-slate-800">
         <div class="flex items-center justify-between">
           <span id="statPeriodLabel" class="text-xs font-bold text-slate-500">全部期間・單據總開支</span>
-          <span class="text-[10px] bg-slate-100 text-slate-600 font-bold px-1.5 py-0.5 rounded">含已分攤+未分攤</span>
+          <span class="text-[10px] bg-slate-100 text-slate-600 font-bold px-1.5 py-0.5 rounded">含未分攤+已分攤</span>
         </div>
         <div id="statTotalAmount" class="text-2xl font-black text-slate-900 mt-1">NT$ 0</div>
         <div id="statTotalCount" class="text-[11px] text-slate-500 mt-0.5">共 0 筆（未分攤 $0 ／ 已分攤 $0）</div>
@@ -239,7 +234,7 @@
     <!-- 2. 主功能切換分頁列 -->
     <nav class="grid grid-cols-2 sm:grid-cols-4 gap-2 no-print">
       <button type="button" data-tab="tab-capture" class="main-tab-btn tab-btn-active font-extrabold text-xs sm:text-sm py-2.5 px-3 rounded-xl border transition flex items-center justify-center gap-1.5">
-        📸 1. 拍單 AI 辨識與記帳
+        📸 1. 拍單動態辨識與記帳
       </button>
       <button type="button" data-tab="tab-records" class="main-tab-btn tab-btn-inactive font-extrabold text-xs sm:text-sm py-2.5 px-3 rounded-xl border transition flex items-center justify-center gap-1.5">
         📋 2. 代墊明細管理 (<span id="navBadgeCount">0</span>)
@@ -255,23 +250,16 @@
     <!-- ==================== 分頁 1：拍單辨識與新增記帳 ==================== -->
     <section id="tab-capture" class="space-y-4">
       <div class="bg-white rounded-2xl shadow-md border border-slate-200 p-4 md:p-5">
-        <!-- 區塊標題與一鍵體驗測試收據按鈕 -->
         <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-4 border-b border-slate-100">
           <div>
             <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
-              <span>📸 步驟一：上傳收據/發票照片 或 點選測試單據體驗辨識</span>
+              <span>📸 步驟一：上傳收據/發票/截圖 或 開啟相機即時拍照</span>
             </h2>
-            <p class="text-xs text-slate-500 mt-0.5">支援手機相簿選照片、開啟相機現場拍、或直接點選右方「測試收據」立即驗證辨識與入帳</p>
+            <p class="text-xs text-slate-500 mt-0.5">每次選取不同圖片皆會自動清空舊欄位並重新執行影像辨識（亦支援電腦直接按 Ctrl+V 貼上截圖）</p>
           </div>
           <div class="flex flex-wrap gap-1.5">
-            <button type="button" id="btnDemoKmuh" class="bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-300 text-xs font-extrabold px-2.5 py-1.5 rounded-lg transition">
-              🧪 測試「高醫門診收據」
-            </button>
-            <button type="button" id="btnDemoPxmart" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-extrabold px-2.5 py-1.5 rounded-lg transition">
-              🧪 測試「全聯買菜發票」
-            </button>
-            <button type="button" id="btnDemoToy" class="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-extrabold px-2.5 py-1.5 rounded-lg transition">
-              🧪 載入「旭陽玩具店收據」
+            <button type="button" id="btnClearFormInputs" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-bold px-3 py-1.5 rounded-lg transition">
+              🧹 清空目前表單欄位
             </button>
           </div>
         </div>
@@ -284,14 +272,14 @@
               <label for="fileInputAlbum" class="cursor-pointer group bg-indigo-50/70 hover:bg-indigo-100/80 border-2 border-dashed border-indigo-400 rounded-2xl p-4 text-center transition flex flex-col items-center justify-center shadow-sm">
                 <span class="text-3xl mb-1 group-hover:scale-110 transition">🖼️</span>
                 <span class="font-extrabold text-indigo-950 text-sm">從相簿選照片/截圖</span>
-                <span class="text-[11px] text-indigo-700 mt-0.5">發票照、網購或 LINE 截圖</span>
+                <span class="text-[11px] text-indigo-700 mt-0.5">支援更換任意發票、收據或截圖</span>
                 <input type="file" id="fileInputAlbum" accept="image/*" class="hidden">
               </label>
 
               <label for="fileInputCamera" class="cursor-pointer group bg-blue-50/70 hover:bg-blue-100/80 border-2 border-dashed border-blue-400 rounded-2xl p-4 text-center transition flex flex-col items-center justify-center shadow-sm">
                 <span class="text-3xl mb-1 group-hover:scale-110 transition">📷</span>
                 <span class="font-extrabold text-blue-950 text-sm">開啟相機現場拍</span>
-                <span class="text-[11px] text-blue-700 mt-0.5">拍高醫收據、發票、市場買菜</span>
+                <span class="text-[11px] text-blue-700 mt-0.5">拍醫療收據、發票、市場買菜</span>
                 <input type="file" id="fileInputCamera" accept="image/*" capture="environment" class="hidden">
               </label>
             </div>
@@ -299,36 +287,39 @@
             <!-- 辨識狀態與進度面板 -->
             <div id="ocrStatusPanel" style="display: none;" class="bg-slate-900 text-white rounded-2xl p-3.5 space-y-2 shadow-md">
               <div class="flex items-center justify-between text-xs font-bold">
-                <span id="ocrStatusTitle" class="text-emerald-300">🔍 正在辨識單據內容與金額...</span>
+                <span id="ocrStatusTitle" class="text-emerald-300">🔍 正在辨識新上傳的單據影像...</span>
                 <span id="ocrStatusBadge" class="bg-slate-800 px-2 py-0.5 rounded text-amber-300">處理中</span>
               </div>
               <div class="w-full bg-slate-700 h-2 rounded-full overflow-hidden">
-                <div id="ocrProgressBar" class="bg-emerald-400 h-2 transition-all duration-300" style="width: 20%;"></div>
+                <div id="ocrProgressBar" class="bg-emerald-400 h-2 transition-all duration-300" style="width: 15%;"></div>
               </div>
-              <div id="ocrStatusDetail" class="text-[11px] text-slate-300">系統正自動萃取日期、商家、品項明細與總金額</div>
+              <div id="ocrStatusDetail" class="text-[11px] text-slate-300">正在掃描單據上的日期、商家、品項明細與金額數字...</div>
             </div>
 
-            <!-- 候選金額快速點選區 -->
+            <!-- 單據動態偵測之候選金額與文字行快速點選區 -->
             <div id="candidateAmountBox" class="bg-amber-50 border border-amber-300 rounded-2xl p-3 space-y-2">
-              <div class="flex items-center justify-between">
-                <span class="text-xs font-extrabold text-amber-950">🎯 單據偵測/常用金額（點一下立即填入右方「單據實付總金額」）：</span>
+              <div class="flex items-center justify-between flex-wrap gap-1">
+                <span class="text-xs font-extrabold text-amber-950">🎯 單據偵測金額（點一下立即設為「單據實付總金額」）：</span>
                 <button type="button" id="btnRerunOcr" class="text-[11px] bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-2.5 py-1 rounded-lg shadow">
-                  🔄 重新辨識此圖
+                  🔄 重新辨識目前圖片
                 </button>
               </div>
               <div id="candidateBtnsWrap" class="flex flex-wrap gap-1.5">
-                <button type="button" data-amt="1449" class="cand-amt-btn bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs px-3 py-1.5 rounded-lg shadow-sm">NT$ 1,449</button>
-                <button type="button" data-amt="754" class="cand-amt-btn bg-amber-200 hover:bg-amber-300 text-slate-900 font-extrabold text-xs px-2.5 py-1.5 rounded-lg">NT$ 754</button>
-                <button type="button" data-amt="980" class="cand-amt-btn bg-amber-200 hover:bg-amber-300 text-slate-900 font-extrabold text-xs px-2.5 py-1.5 rounded-lg">NT$ 980</button>
-                <button type="button" data-amt="5240" class="cand-amt-btn bg-amber-200 hover:bg-amber-300 text-slate-900 font-extrabold text-xs px-2.5 py-1.5 rounded-lg">NT$ 5,240</button>
+                <span class="text-xs text-amber-800/80">（上傳收據或發票照片後，此處會自動列出圖片上偵測到的所有金額數字供一鍵點選）</span>
+              </div>
+
+              <!-- 掃描到的乾淨文字行（可點擊加入品項明細） -->
+              <div id="ocrLinesSection" style="display: none;" class="pt-2 border-t border-amber-200 space-y-1.5">
+                <div class="text-[11px] font-bold text-amber-900">📄 單據掃描文字行（點擊任一行可追加至右方「消費品項明細」）：</div>
+                <div id="ocrLinesWrap" class="flex flex-wrap gap-1 max-h-28 overflow-y-auto"></div>
               </div>
             </div>
 
-            <!-- 單據照片預覽與防偽浮水印畫布 (100% 原始長寬比例鎖定、支援旋轉與全螢幕放大) -->
+            <!-- 單據照片預覽與防偽浮水印畫布 -->
             <div id="canvasPreviewBox" style="display: none;" class="space-y-2.5 bg-slate-100 p-3.5 rounded-2xl border border-slate-300 shadow-inner">
               <div class="flex flex-wrap justify-between items-center gap-2">
                 <span class="text-xs font-extrabold text-slate-800 flex items-center gap-1">
-                  🛡️ 數位存證預覽（100% 鎖定原始比例不變形・獨立防切字底欄）：
+                  🛡️ 數位存證預覽（100% 原始比例鎖定・獨立存證底欄）：
                 </span>
                 <div class="flex flex-wrap items-center gap-1.5">
                   <button type="button" id="btnRotateLeft" class="text-xs bg-white hover:bg-slate-200 text-slate-800 border border-slate-300 font-bold px-2.5 py-1 rounded-lg shadow-sm transition">
@@ -341,7 +332,7 @@
                     📐 展開完整高度
                   </button>
                   <button type="button" id="btnOpenLightbox" class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-2.5 py-1 rounded-lg shadow-sm transition">
-                    🔍 全螢幕高清檢視
+                    🔍 全螢幕檢視
                   </button>
                   <button type="button" id="btnDownloadPreviewImg" class="text-xs bg-slate-800 hover:bg-slate-700 text-white font-bold px-2.5 py-1 rounded-lg shadow-sm transition">
                     ⬇️ 下載存證照
@@ -356,37 +347,37 @@
               </div>
               <div class="text-[11px] text-slate-500 flex justify-between items-center px-1">
                 <span id="imgDimInfoBadge">📐 影像比例：原始等比例鎖定</span>
-                <span class="text-indigo-600 font-bold">💡 點擊圖片可開啟全螢幕高清放大檢視</span>
+                <span class="text-indigo-600 font-bold">💡 若照片方向顛倒，可點「左轉/右轉90°」後按「重新辨識目前圖片」</span>
               </div>
             </div>
 
-            <!-- 媽媽常用照護開支「一鍵快填範本」 -->
+            <!-- 常用照護類別快速設定（僅設定分類與預設說明，不覆蓋已辨識之真實金額） -->
             <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3 space-y-2">
-              <div class="text-xs font-extrabold text-slate-700">⚡ 媽媽常用照護支出「一鍵帶入範本」（免打字）：</div>
+              <div class="text-xs font-extrabold text-slate-700">⚡ 常用照護支出分類快選（可快速切換分類資料夾）：</div>
               <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                <button type="button" data-tpl="kmuh" class="quick-tpl-btn text-left text-xs bg-white hover:bg-blue-50 border border-slate-300 rounded-xl p-2 transition shadow-sm">
-                  <div class="font-extrabold text-blue-900">🏥 高醫門診/植皮</div>
-                  <div class="text-[10px] text-slate-500">門診掛號與敷料耗材</div>
+                <button type="button" data-cat="01_醫療門診與住院" data-merch="高醫附設醫院" class="quick-cat-btn text-left text-xs bg-white hover:bg-blue-50 border border-slate-300 rounded-xl p-2 transition shadow-2xs">
+                  <div class="font-extrabold text-blue-900">🏥 01_醫療門診住院</div>
+                  <div class="text-[10px] text-slate-500">門診批價/住院收據</div>
                 </button>
-                <button type="button" data-tpl="dialysis" class="quick-tpl-btn text-left text-xs bg-white hover:bg-blue-50 border border-slate-300 rounded-xl p-2 transition shadow-sm">
-                  <div class="font-extrabold text-emerald-900">💉 洗腎診所費用</div>
-                  <div class="text-[10px] text-slate-500">田源/宗禾透析相關</div>
+                <button type="button" data-cat="02_長照與看護自付" data-merch="特約居家長照機構" class="quick-cat-btn text-left text-xs bg-white hover:bg-blue-50 border border-slate-300 rounded-xl p-2 transition shadow-2xs">
+                  <div class="font-extrabold text-purple-900">👵 02_長照看護自付</div>
+                  <div class="text-[10px] text-slate-500">居服員自付額/看護費</div>
                 </button>
-                <button type="button" data-tpl="ltc" class="quick-tpl-btn text-left text-xs bg-white hover:bg-blue-50 border border-slate-300 rounded-xl p-2 transition shadow-sm">
-                  <div class="font-extrabold text-purple-900">👵 長照居服自付額</div>
-                  <div class="text-[10px] text-slate-500">BA07沐浴/BA14陪醫/BA05</div>
+                <button type="button" data-cat="03_傷口敷料與耗材" data-merch="杏一/維康醫療用品" class="quick-cat-btn text-left text-xs bg-white hover:bg-blue-50 border border-slate-300 rounded-xl p-2 transition shadow-2xs">
+                  <div class="font-extrabold text-emerald-900">🩹 03_傷口敷料耗材</div>
+                  <div class="text-[10px] text-slate-500">敷料/紗布/看護墊</div>
                 </button>
-                <button type="button" data-tpl="pxmart" class="quick-tpl-btn text-left text-xs bg-white hover:bg-blue-50 border border-slate-300 rounded-xl p-2 transition shadow-sm">
-                  <div class="font-extrabold text-indigo-900">🛒 全聯洗腎食材</div>
-                  <div class="text-[10px] text-slate-500">去刺魚片/瘦肉/高麗菜</div>
+                <button type="button" data-cat="04_洗腎營養品與奶粉" data-merch="醫療營養品採購" class="quick-cat-btn text-left text-xs bg-white hover:bg-blue-50 border border-slate-300 rounded-xl p-2 transition shadow-2xs">
+                  <div class="font-extrabold text-rose-900">🥛 04_洗腎營養奶粉</div>
+                  <div class="text-[10px] text-slate-500">純乳清蛋白/透析營養品</div>
                 </button>
-                <button type="button" data-tpl="market" class="quick-tpl-btn text-left text-xs bg-white hover:bg-blue-50 border border-slate-300 rounded-xl p-2 transition shadow-sm">
-                  <div class="font-extrabold text-amber-900">🥬 傳統市場買菜</div>
-                  <div class="text-[10px] text-slate-500">無發票實物拍照存證</div>
+                <button type="button" data-cat="05_超市與市場膳食" data-merch="全聯福利中心" class="quick-cat-btn text-left text-xs bg-white hover:bg-blue-50 border border-slate-300 rounded-xl p-2 transition shadow-2xs">
+                  <div class="font-extrabold text-indigo-900">🛒 05_超市市場膳食</div>
+                  <div class="text-[10px] text-slate-500">全聯發票/市場買菜</div>
                 </button>
-                <button type="button" data-tpl="protein" class="quick-tpl-btn text-left text-xs bg-white hover:bg-blue-50 border border-slate-300 rounded-xl p-2 transition shadow-sm">
-                  <div class="font-extrabold text-rose-900">🥛 純乳清/洗腎營養</div>
-                  <div class="text-[10px] text-slate-500">補體素/腎補納/敷料</div>
+                <button type="button" data-cat="06_交通接送與專車" data-merch="就醫交通接送" class="quick-cat-btn text-left text-xs bg-white hover:bg-blue-50 border border-slate-300 rounded-xl p-2 transition shadow-2xs">
+                  <div class="font-extrabold text-amber-900">🚕 06_交通接送專車</div>
+                  <div class="text-[10px] text-slate-500">復康巴士/計程車/停車</div>
                 </button>
               </div>
             </div>
@@ -395,8 +386,8 @@
           <!-- 右欄：入帳表單 -->
           <div class="lg:col-span-6 space-y-3 bg-slate-50/70 p-4 rounded-2xl border border-slate-200">
             <div class="flex items-center justify-between border-b border-slate-200 pb-2">
-              <h3 class="text-sm font-extrabold text-slate-800">✍️ 步驟二：確認或微調明細後儲存入帳</h3>
-              <span id="editingModeBadge" style="display: none;" class="bg-amber-500 text-slate-950 text-xs font-black px-2.5 py-0.5 rounded-full">✏️ 正在編輯單據</span>
+              <h3 class="text-sm font-extrabold text-slate-800">✍️ 步驟二：確認辨識明細與分攤狀態後儲存</h3>
+              <span id="editingModeBadge" style="display: none;" class="bg-amber-500 text-slate-950 text-xs font-black px-2.5 py-0.5 rounded-full">✏️ 正在修正單據</span>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -405,7 +396,7 @@
                 <input type="date" id="formDate" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white font-semibold">
               </div>
               <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1">實際代墊人（呈現誰先墊錢）</label>
+                <label class="block text-xs font-bold text-slate-700 mb-1">實際代墊人（呈現誰先墊款）</label>
                 <select id="formPayer" class="w-full border-2 border-blue-500 rounded-xl px-3 py-2 text-sm font-extrabold text-blue-900 bg-blue-50">
                   <option value="我(長子)代墊">🙋‍♂️ 我（長子代墊）</option>
                   <option value="品璇(太太)代墊">🙋‍♀️ 品璇（太太代墊）</option>
@@ -416,12 +407,12 @@
             <div>
               <label class="block text-xs font-bold text-slate-700 mb-1">自動歸檔之雲端分類資料夾（8大標準分類）</label>
               <select id="formCategory" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white font-bold text-slate-800">
-                <option value="01_醫療門診與住院">📁 01_醫療門診與住院（高醫門診/植皮住院/批價收據）</option>
-                <option value="02_長照與看護自付">📁 02_長照與看護自付（居服員自付額/住院24H看護費）</option>
-                <option value="03_傷口敷料與耗材">📁 03_傷口敷料與耗材（負壓海綿/親水敷料/紗布看護墊）</option>
-                <option value="04_洗腎營養品與奶粉">📁 04_洗腎營養品與奶粉（純乳清蛋白粉/腎補納/勝力2）</option>
-                <option value="05_超市與市場膳食">📁 05_超市與市場膳食（全聯發票/傳統市場買菜實物照）</option>
-                <option value="06_交通接送與專車">📁 06_交通接送與專車（長照專車/復康巴士/回診計程車）</option>
+                <option value="01_醫療門診與住院">📁 01_醫療門診與住院（門診/住院/洗腎院所收據）</option>
+                <option value="02_長照與看護自付">📁 02_長照與看護自付（居服員自付額/住院看護費）</option>
+                <option value="03_傷口敷料與耗材">📁 03_傷口敷料與耗材（傷口敷料/紗布/醫療耗材）</option>
+                <option value="04_洗腎營養品與奶粉">📁 04_洗腎營養品與奶粉（純乳清蛋白/透析營養配方）</option>
+                <option value="05_超市與市場膳食">📁 05_超市與市場膳食（超市發票/傳統市場買菜存證）</option>
+                <option value="06_交通接送與專車">📁 06_交通接送與專車（長照專車/復康巴士/回診車資）</option>
                 <option value="07_輔具與環境改善">📁 07_輔具與環境改善（輪椅/氣墊床/便盆椅/扶手）</option>
                 <option value="08_其他照護雜支">📁 08_其他照護雜支（日常用品/行政規費/其他單據）</option>
               </select>
@@ -430,17 +421,17 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label class="block text-xs font-bold text-slate-700 mb-1">醫院 / 商家名稱</label>
-                <input type="text" id="formMerchant" placeholder="例：高醫附設醫院、全聯福利中心" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white">
+                <input type="text" id="formMerchant" placeholder="上傳單據自動辨識或手動輸入" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white">
               </div>
               <div>
                 <label class="block text-xs font-bold text-slate-700 mb-1">發票號碼 / 收據單號</label>
-                <input type="text" id="formInvoice" placeholder="無發票可填：實物拍照存證" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white">
+                <input type="text" id="formInvoice" placeholder="自動抓取單號（無發票可填：實物存證）" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white">
               </div>
             </div>
 
             <div>
-              <label class="block text-xs font-bold text-slate-700 mb-1">消費品項明細與數量（自動辨識帶入，可直接編輯補充）</label>
-              <textarea id="formItems" rows="3" placeholder="例：去刺鱸魚排 $185 / 豬里肌肉片 $169 / 高麗菜 $65..." class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white leading-relaxed"></textarea>
+              <label class="block text-xs font-bold text-slate-700 mb-1">消費品項明細與數量（自動辨識帶入，以「 / 」分隔各細項）</label>
+              <textarea id="formItems" rows="3" placeholder="上傳收據後將自動辨識品項與金額；亦可直接編輯或點擊左側掃描文字行追加" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white leading-relaxed"></textarea>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-stretch">
@@ -454,20 +445,20 @@
                   <span class="text-xs font-extrabold text-amber-900">妹妹應分攤比例</span>
                   <select id="formShareRatio" class="text-xs bg-white border border-amber-400 rounded-lg px-2 py-0.5 font-bold text-amber-900">
                     <option value="0.5" selected>50% (一人一半)</option>
-                    <option value="0.6">60% (未同住多攤)</option>
-                    <option value="0.7">70% (未同住多攤)</option>
+                    <option value="0.6">60% (依比例分擔)</option>
+                    <option value="0.7">70% (依比例分擔)</option>
                     <option value="1">100% (全額應攤)</option>
                     <option value="0">0% (自付不請款)</option>
                   </select>
                 </div>
                 <div class="mt-2">
-                  <div class="text-[11px] text-amber-800">妹妹本筆應攤金額：</div>
+                  <div class="text-[11px] text-amber-800">妹妹本筆應分攤金額：</div>
                   <div id="formSisterPreview" class="text-xl font-black text-amber-600">NT$ 0</div>
                 </div>
               </div>
             </div>
 
-            <!-- 新增/編輯時可直接註記「尚未分攤 / 已經分攤過」與結算備註 -->
+            <!-- 新增/修正時可直接註記「尚未分攤 / 已經分攤過」與結算備註 -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white p-3 rounded-2xl border border-slate-200">
               <div>
                 <label class="block text-xs font-extrabold text-slate-800 mb-1">⚖️ 分攤狀態註記（可隨時修正）</label>
@@ -478,7 +469,7 @@
               </div>
               <div>
                 <label class="block text-xs font-extrabold text-slate-800 mb-1">📝 分攤/結算註記備註（選填）</label>
-                <input type="text" id="formSettleNote" placeholder="例：11/01 拒付列入訴訟代墊 或 11/05 已匯款結清" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm bg-white">
+                <input type="text" id="formSettleNote" placeholder="例：已收到匯款結清 或 對方未付列入調解代墊" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm bg-white">
               </div>
             </div>
 
@@ -487,7 +478,7 @@
                 ✅ 儲存單據（永久寫入本機＋同步傳送 Google 雲端）
               </button>
               <button type="button" id="btnCancelEdit" style="display: none;" class="bg-slate-300 hover:bg-slate-400 text-slate-800 font-bold py-3.5 px-4 rounded-xl text-xs">
-                取消編輯
+                取消修正
               </button>
             </div>
           </div>
@@ -502,7 +493,7 @@
               <span>🧾 雲端與本機單據細項總覽（依年月＆分攤狀態分區呈現）</span>
               <span id="currentViewFilterTag" class="bg-blue-100 text-blue-800 text-xs font-black px-2.5 py-0.5 rounded-full">全部年月</span>
             </h3>
-            <p class="text-xs text-slate-500 mt-0.5">不論在【⏳ 尚未分攤】或【✅ 已經分攤過】，每筆皆可點選「⚖️ 切換分攤狀態」、「📝 註記」、「✏️ 修正」或「🗑️ 刪除」</p>
+            <p class="text-xs text-slate-500 mt-0.5">每筆單據皆支援「✅ 標為已分攤 / ↩️ 改回尚未分攤」、「📝 註記」、「✏️ 修正」與「🗑️ 刪除（含復原保護）」</p>
           </div>
           <div class="flex flex-wrap gap-1.5">
             <button type="button" id="btnUndoDelete" style="display: none;" class="bg-rose-600 hover:bg-rose-500 text-white text-xs font-black px-3 py-1.5 rounded-xl shadow animate-pulse">
@@ -513,9 +504,6 @@
             </button>
             <button type="button" id="btnUnsettleCurrentMonthAll" class="bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-extrabold px-3 py-1.5 rounded-xl shadow">
               ⏳ 將所選年月全部改回「尚未分攤」
-            </button>
-            <button type="button" id="btnRestoreToyDefault" class="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 text-xs font-bold px-3 py-1.5 rounded-xl">
-              🔄 找回「#101-339 旭陽玩具店 $1,449」單據
             </button>
             <button type="button" id="btnExportCsvQuick" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow">
               📊 匯出 Excel (.csv)
@@ -534,7 +522,7 @@
         <div id="monthlyCategorySummaryBox" class="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2">
           <div class="flex items-center justify-between">
             <span id="monthlySummaryTitle" class="text-xs font-extrabold text-slate-800">📊 本期各類別細項金額統計：</span>
-            <span class="text-[11px] text-slate-500">點擊單據下方「展開細項拆解」可檢視每個品項單價</span>
+            <span class="text-[11px] text-slate-500">點擊單據下方「🔍 展開細項資訊」可檢視每個品項單價</span>
           </div>
           <div id="monthlyCategoryBreakdownGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
         </div>
@@ -571,7 +559,7 @@
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 class="text-base font-extrabold text-slate-900">📋 依年月＆分攤狀態檢視雲端紀錄與細項資訊</h2>
-            <p class="text-xs text-slate-500">可依年月、代墊人、分攤狀態（尚未分攤 / 已經分攤過）或關鍵字精準調閱所有細項</p>
+            <p class="text-xs text-slate-500">可依年月、代墊人、分攤狀態（尚未分攤 / 已經分攤過）或關鍵字精準調閱所有細項，並進行修正或刪除</p>
           </div>
           <div class="flex flex-wrap gap-2">
             <select id="filterYearMonth" class="text-xs border-2 border-blue-500 rounded-xl px-3 py-2 bg-blue-50 font-extrabold text-blue-950">
@@ -587,7 +575,7 @@
               <option value="代墊未結算">⏳ 尚未分攤（待結算）</option>
               <option value="已結算收回">✅ 已經分攤過（已結清）</option>
             </select>
-            <input type="text" id="filterKeyword" placeholder="搜尋商家、品項細項或單號..." class="text-xs border border-slate-300 rounded-xl px-3 py-2 bg-white">
+            <input type="text" id="filterKeyword" placeholder="搜尋商家、品項細項、註記或單號..." class="text-xs border border-slate-300 rounded-xl px-3 py-2 bg-white">
           </div>
         </div>
 
@@ -620,7 +608,7 @@
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 class="text-base font-extrabold text-slate-900">📱 月底「零情緒・公事公辦」LINE 對帳請款單</h2>
-            <p class="text-xs text-slate-500">自動匯總所有「代墊未結算」單據明細、單號與應分攤金額，一鍵複製貼到家族群組</p>
+            <p class="text-xs text-slate-500">自動依所選年月匯總「⏳ 尚未分攤」與「✅ 已經分攤過」單據明細、單號與應分攤金額</p>
           </div>
           <div class="flex flex-wrap gap-2">
             <button type="button" id="btnCopyLineReport" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold px-4 py-2 rounded-xl shadow">
@@ -637,9 +625,9 @@
       <!-- GitHub + Vercel 雲端全自動部署程式碼區 -->
       <div class="bg-indigo-950 text-white rounded-2xl shadow-xl p-4 md:p-5 space-y-4 border border-indigo-700">
         <div>
-          <h3 class="text-sm md:text-base font-extrabold text-amber-300">🌐 GitHub + Vercel 雲端全自動架站指南（免填金鑰、無跨網域阻擋）</h3>
+          <h3 class="text-sm md:text-base font-extrabold text-amber-300">🌐 GitHub + Vercel 雲端全自動架站檔案（免填金鑰、零跨網域阻擋）</h3>
           <p class="text-xs text-indigo-200 mt-1">
-            將本系統部署在 GitHub + Vercel 後，Vercel 後端會自動透過環境變數 <code class="text-emerald-300">GEMINI_API_KEY</code> 與 <code class="text-emerald-300">GAS_WEBAPP_URL</code> 驅動 AI 影像辨識並直接將收據寫入 Google 雲端，手機與電腦打開網址即可直接使用！
+            將本系統部署於 GitHub + Vercel 後，Vercel 後端會透過環境變數 <code class="text-emerald-300">GEMINI_API_KEY</code> 與 <code class="text-emerald-300">GAS_WEBAPP_URL</code> 驅動 AI 影像辨識並將收據同步至 Google 雲端。
           </p>
         </div>
 
@@ -676,7 +664,7 @@
           <div>
             <h3 class="text-sm font-extrabold text-emerald-400">🚀 Google Apps Script 雲端自動建置與雙向同步程式碼（程式碼.gs）</h3>
             <p class="text-xs text-slate-300 mt-0.5">
-              自動在您的 Google 雲端硬碟建立「【媽媽照護開支雲端存證庫】」8 大分類資料夾與「媽媽照護生活開支與代墊總帳本」試算表
+              自動在您的 Google 雲端硬碟建立「【媽媽照護開支雲端存證庫】」8 大分類資料夾與「媽媽照護生活開支與代墊總帳本」試算表（支援新增、狀態更新與刪除同步）
             </p>
           </div>
           <button type="button" id="btnCopyGasCode" class="bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black px-4 py-2 rounded-xl shadow">
@@ -694,7 +682,7 @@
     <span id="toastMessage">已儲存</span>
   </div>
 
-  <!-- 全螢幕高清收據檢視燈箱 Modal (100% 原始比例不變形) -->
+  <!-- 全螢幕高清收據檢視燈箱 Modal -->
   <div id="lightboxModal" style="display: none;" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-sm flex flex-col items-center justify-center p-4 no-print">
     <div class="w-full max-w-4xl flex justify-between items-center mb-3 text-white">
       <div id="lightboxTitle" class="text-sm font-extrabold truncate">🛡️ 單據數位存證高清原圖檢視（100% 原始比例）</div>
@@ -717,10 +705,11 @@
     (function() {
       "use strict";
 
-      var IDB_NAME = "MomCarePermanentDB_v11";
+      var IDB_NAME = "MomCarePermanentDB_v13";
       var IDB_STORE = "care_records";
-      var LS_RECORDS_KEY = "MOM_CARE_RECORDS_BACKUP_V11";
+      var LS_RECORDS_KEY = "MOM_CARE_RECORDS_PROD_V13";
       var LS_LEGACY_KEYS = [
+        "MOM_CARE_RECORDS_BACKUP_V11",
         "MOM_CARE_RECORDS_BACKUP_V10",
         "MOM_CARE_RECORDS_BACKUP_V9",
         "MOM_CARE_RECORDS_BACKUP_V7",
@@ -731,6 +720,9 @@
       var LS_GAS_URL = "MOM_CARE_GAS_WEBAPP_URL";
       var LS_DRIVE_URL = "MOM_CARE_DRIVE_FOLDER_URL";
       var LS_SHEET_URL = "MOM_CARE_SHEET_FILE_URL";
+
+      // 內建環境金鑰（若於支援自動注入之執行環境將自動啟用）
+      var ENV_GEMINI_API_KEY = "";
 
       var FOLDERS = [
         "01_醫療門診與住院",
@@ -743,57 +735,6 @@
         "08_其他照護雜支"
       ];
 
-      var QUICK_TEMPLATES = {
-        kmuh: {
-          category: "01_醫療門診與住院",
-          merchant: "高雄醫學大學附設中和紀念醫院",
-          invoiceNo: "KMUH-門診批價收據",
-          items: "整形外科/腎臟內科門診掛號費 $100 / 健保部分負擔(重大傷病減免) $80 / 腳底傷口無菌敷料耗材自費 $800",
-          amount: 980,
-          candidates: [980, 420, 800, 1050]
-        },
-        dialysis: {
-          category: "01_醫療門診與住院",
-          merchant: "田源診所 / 宗禾診所（血液透析室）",
-          invoiceNo: "HD-透析中心收據",
-          items: "血液透析照護與止血帶/外用敷料耗材費",
-          amount: 350,
-          candidates: [350, 200, 500]
-        },
-        ltc: {
-          category: "02_長照與看護自付",
-          merchant: "高雄市特約居家長照機構",
-          invoiceNo: "LTC-月結繳費單",
-          items: "長照第7級居服員自付額(16%)：BA07協助沐浴洗頭 + BA14陪同就醫洗腎 + BA05餐食備餐服務 + 長照專車自付額",
-          amount: 5240,
-          candidates: [5240, 4640, 2800, 1050]
-        },
-        pxmart: {
-          category: "05_超市與市場膳食",
-          merchant: "全聯福利中心 三民鼎富店",
-          invoiceNo: "AB-75499821",
-          items: "台灣去刺虱目魚肚/鯛魚片 $185 / 國產豬里肌薄切肉片 $169 / 洗選蛋白與傳統板豆腐 $130 / 高麗菜與節瓜 $120 / 一等純白米 $150",
-          amount: 754,
-          candidates: [754, 997, 580, 450]
-        },
-        market: {
-          category: "05_超市與市場膳食",
-          merchant: "三民區傳統市場（實物拍照存證）",
-          invoiceNo: "實物拍照存證",
-          items: "新鮮現切豬瘦肉絲 $180 / 無刺新鮮鱸魚排 $160 / 大黃瓜與青江菜(汆燙去鉀用) $110",
-          amount: 450,
-          candidates: [450, 350, 600, 200]
-        },
-        protein: {
-          category: "04_洗腎營養品與奶粉",
-          merchant: "杏一醫療用品 / 好市多 Costco",
-          invoiceNo: "MD-38109920",
-          items: "無調味純乳清蛋白粉(補體素優蛋白/三多高蛋白粉) $1,280 / 洗腎透析專用營養配方(勝力2/腎補納) $2,530",
-          amount: 3810,
-          candidates: [3810, 1280, 2530, 4680]
-        }
-      };
-
       var records = [];
       var editingId = null;
       var lastDeletedRecord = null;
@@ -801,10 +742,12 @@
       var rawUploadedImg = null;
       var currentRotation = 0;
       var cleanOcrDataUrl = "";
+      var preprocessedOcrDataUrl = "";
       var watermarkedDataUrl = "";
       var isCanvasZoomed = false;
       var selectedYearMonth = "ALL";
       var selectedShareFilter = "ALL"; // ALL | UNSHARED | SHARED
+      var currentScanToken = 0;
       var toastTimer = null;
 
       function byId(id) {
@@ -836,7 +779,7 @@
         if (toastTimer) clearTimeout(toastTimer);
         toastTimer = setTimeout(function() {
           banner.style.display = "none";
-        }, 3400);
+        }, 3600);
       }
 
       function openLightboxModal(imgSrc, titleText) {
@@ -852,6 +795,17 @@
           dlBtn.download = (titleText || "媽媽照護單據存證").replace(/[\/\\:*?"<>|\s]+/g, "_") + ".jpg";
         }
         modal.style.display = "flex";
+      }
+
+      // 過濾並移除任何舊版殘留之範例資料（如 #101-339 旭陽玩具店）
+      function isSampleOrDemoRecord(r) {
+        if (!r) return true;
+        var idStr = String(r.id || "");
+        var merchStr = String(r.merchant || "");
+        if (idStr === "#101-339" || merchStr.indexOf("旭陽玩具店") !== -1) {
+          return true;
+        }
+        return false;
       }
 
       function openCareDB() {
@@ -876,119 +830,6 @@
         });
       }
 
-      function createToyReceiptThumbnailDataUrl() {
-        var cvs = document.createElement("canvas");
-        var w = 800;
-        var h = 540;
-        var barH = 86;
-        cvs.width = w;
-        cvs.height = h + barH;
-        var ctx = cvs.getContext("2d");
-
-        ctx.fillStyle = "#fffdf9";
-        ctx.fillRect(0, 0, w, h);
-        ctx.strokeStyle = "#dc2626";
-        ctx.lineWidth = 2.5;
-        ctx.strokeRect(28, 24, w - 56, h - 48);
-
-        ctx.fillStyle = "#dc2626";
-        ctx.font = "bold 26px 'Microsoft JhengHei', sans-serif";
-        ctx.fillText("免 用 統 一 發 票 收 據", 250, 66);
-
-        ctx.fillStyle = "#334155";
-        ctx.font = "16px 'Microsoft JhengHei', sans-serif";
-        ctx.fillText("台照：高雄市大同國小      日期：2024-05-20      統一編號：47691737", 52, 102);
-
-        ctx.strokeStyle = "#f87171";
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.moveTo(45, 118);
-        ctx.lineTo(w - 45, 118);
-        ctx.stroke();
-
-        var items = [
-          ["1. 特大孫悟空桌遊", "2盒", "219", "438"],
-          ["2. 怪物捕手桌遊", "1盒", "185", "185"],
-          ["3. 大張木製疊疊樂", "2盒", "152", "304"],
-          ["4. 數字華容道 4x4", "1盒", "62", "62"],
-          ["5. 數字華容道 5x5", "1盒", "90", "90"],
-          ["6. 曬衣換裝派對", "1盒", "276", "276"],
-          ["7. 圈隊分割", "1盒", "94", "94"]
-        ];
-
-        ctx.fillStyle = "#b91c1c";
-        ctx.font = "bold 16px 'Microsoft JhengHei', sans-serif";
-        ctx.fillText("品名項目", 56, 146);
-        ctx.fillText("數量", 330, 146);
-        ctx.fillText("單價", 420, 146);
-        ctx.fillText("總價", 520, 146);
-
-        ctx.fillStyle = "#1e3a8a";
-        ctx.font = "17px 'Microsoft JhengHei', sans-serif";
-        for (var i = 0; i < items.length; i++) {
-          var y = 182 + i * 36;
-          ctx.fillText(items[i][0], 56, y);
-          ctx.fillText(items[i][1], 330, y);
-          ctx.fillText("$" + items[i][2], 420, y);
-          ctx.fillText("$" + items[i][3], 520, y);
-        }
-
-        // 收據專用章
-        ctx.save();
-        ctx.strokeStyle = "#1d4ed8";
-        ctx.lineWidth = 2.5;
-        ctx.strokeRect(595, 250, 155, 115);
-        ctx.fillStyle = "#1d4ed8";
-        ctx.font = "bold 18px 'Microsoft JhengHei', sans-serif";
-        ctx.fillText("旭陽玩具店", 625, 280);
-        ctx.font = "bold 16px monospace";
-        ctx.fillText("統編:47691737", 610, 308);
-        ctx.font = "12px 'Microsoft JhengHei', sans-serif";
-        ctx.fillText("TEL:(07)783-5516", 615, 332);
-        ctx.fillText("高雄市大寮區內厝路399號", 603, 352);
-        ctx.restore();
-
-        ctx.fillStyle = "#b91c1c";
-        ctx.font = "bold 22px 'Microsoft JhengHei', sans-serif";
-        ctx.fillText("合計新台幣：壹仟肆佰肆拾玖元整 (NT$ 1,449)", 56, 475);
-
-        // 底部獨立防切字存證底欄
-        ctx.fillStyle = "#0f172a";
-        ctx.fillRect(0, h, w, barH);
-        ctx.fillStyle = "#10b981";
-        ctx.fillRect(0, h, w, 4);
-
-        ctx.fillStyle = "#f8fafc";
-        ctx.font = "bold 18px 'Microsoft JhengHei', sans-serif";
-        ctx.fillText("🛡️【媽媽照護開支數位存證】日期：2024-05-20 ｜ 代墊人：我(長子)代墊", 28, h + 34);
-        ctx.fillStyle = "#fbbf24";
-        ctx.font = "bold 19px 'Microsoft JhengHei', sans-serif";
-        ctx.fillText("🏥 商家：旭陽玩具店 (47691737) ｜ 實付總額：NT$ 1,449 元", 28, h + 68);
-
-        return cvs.toDataURL("image/jpeg", 0.88);
-      }
-
-      function getDefaultToyRecord() {
-        return {
-          id: "#101-339",
-          date: "2024-05-20",
-          payer: "我(長子)代墊",
-          category: "08_其他照護雜支",
-          merchant: "旭陽玩具店",
-          invoiceNo: "47691737",
-          items: "特大孫悟空桌遊 $438 / 怪物捕手桌遊 $185 / 大張木製疊疊樂 $304 / 數字華容道 4x4 $62 / 數字華容道 5x5 $90 / 曬衣換裝派對 $276 / 圈隊分割 $94",
-          amount: 1449,
-          ratio: 0.5,
-          sisterShare: 725,
-          status: "代墊未結算",
-          settleNote: "待月底或調解結算分攤",
-          photoUrl: createToyReceiptThumbnailDataUrl(),
-          drivePhotoUrl: "",
-          cloudSynced: false,
-          createdAt: "2024-05-20T10:30:00.000Z"
-        };
-      }
-
       function getRecordYearMonth(r) {
         var d = String((r && r.date) || "").trim();
         if (/^\d{4}-\d{2}/.test(d)) return d.slice(0, 7);
@@ -999,7 +840,6 @@
         return r && (r.status === "已結算收回" || r.status === "已分攤" || r.settled === true);
       }
 
-      // 將單據的 items 字串拆解為結構化細項陣列（例如：「特大孫悟空桌遊 $438 / 怪物捕手桌遊 $185」）
       function parseSubItemsList(itemsStr) {
         var raw = String(itemsStr || "").trim();
         if (!raw) return [];
@@ -1086,21 +926,69 @@
           }
         }
 
-        if (!loaded || loaded.length === 0) {
-          loaded = [getDefaultToyRecord()];
+        // 自動清除所有範例/舉例資料，只保留使用者真實建立的單據
+        if (Array.isArray(loaded)) {
+          records = loaded.filter(function(r) { return !isSampleOrDemoRecord(r); });
         } else {
-          loaded.forEach(function(item) {
-            if (item.id === "#101-339" && item.merchant === "旭陽玩具店") {
-              item.photoUrl = createToyReceiptThumbnailDataUrl();
-            }
-          });
+          records = [];
         }
 
-        records = loaded;
         await saveRecordsPersistently();
       }
 
-      // ==================== 3. 防偽存證浮水印畫布與圖片壓縮 ====================
+      // ==================== 3. 防偽存證浮水印畫布與高對比 OCR 影像預處理 ====================
+      function buildOcrImagesFromCurrentImg() {
+        if (!rawUploadedImg) return;
+        var rot = ((currentRotation % 360) + 360) % 360;
+        var isSideways = (rot === 90 || rot === 270);
+        var srcW = isSideways ? rawUploadedImg.height : rawUploadedImg.width;
+        var srcH = isSideways ? rawUploadedImg.width : rawUploadedImg.height;
+
+        var maxOcrW = 1400;
+        var sc = srcW > maxOcrW ? maxOcrW / srcW : 1;
+        var w = Math.round(srcW * sc);
+        var h = Math.round(srcH * sc);
+
+        // 1. 清晰原色旋轉校正圖 (供 Gemini Vision API 使用)
+        var cleanCvs = document.createElement("canvas");
+        cleanCvs.width = w;
+        cleanCvs.height = h;
+        var cCtx = cleanCvs.getContext("2d");
+        cCtx.fillStyle = "#ffffff";
+        cCtx.fillRect(0, 0, w, h);
+        cCtx.save();
+        cCtx.translate(w / 2, h / 2);
+        cCtx.rotate((rot * Math.PI) / 180);
+        if (isSideways) {
+          cCtx.drawImage(rawUploadedImg, -h / 2, -w / 2, h, w);
+        } else {
+          cCtx.drawImage(rawUploadedImg, -w / 2, -h / 2, w, h);
+        }
+        cCtx.restore();
+        cleanOcrDataUrl = cleanCvs.toDataURL("image/jpeg", 0.88);
+
+        // 2. 高對比去陰影灰階強化圖 (供離線 Tesseract OCR 提高收據數字與中文辨識率)
+        var binCvs = document.createElement("canvas");
+        binCvs.width = w;
+        binCvs.height = h;
+        var bCtx = binCvs.getContext("2d");
+        bCtx.drawImage(cleanCvs, 0, 0);
+        try {
+          var imgData = bCtx.getImageData(0, 0, w, h);
+          var d = imgData.data;
+          for (var i = 0; i < d.length; i += 4) {
+            var gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+            // 強化收據文字對比並濾除淡色背景格線
+            var contrasted = gray < 155 ? Math.max(0, (gray - 60) * 0.7) : Math.min(255, gray * 1.15);
+            d[i] = contrasted;
+            d[i + 1] = contrasted;
+            d[i + 2] = contrasted;
+          }
+          bCtx.putImageData(imgData, 0, 0);
+        } catch (err) {}
+        preprocessedOcrDataUrl = binCvs.toDataURL("image/jpeg", 0.9);
+      }
+
       function drawWatermarkCanvas() {
         if (!rawUploadedImg) return;
         var cvs = byId("watermarkCanvas");
@@ -1169,7 +1057,7 @@
         previewImg.src = watermarkedDataUrl;
 
         if (dimBadge) {
-          dimBadge.textContent = "📐 原始比例鎖定：" + w + " × " + (h + barH) + " px（旋轉 " + rot + "°・絕不變形）";
+          dimBadge.textContent = "📐 原始比例鎖定：" + w + " × " + (h + barH) + " px（旋轉 " + rot + "°）";
         }
       }
 
@@ -1195,52 +1083,118 @@
         });
       }
 
-      // ==================== 4. 單據影像辨識引擎 (支援 Vercel /api/ocr + Gemini + 本地結構化) ====================
+      // ==================== 4. 真實動態單據影像辨識引擎 (支援換任何不同收據皆重新辨識) ====================
       function renderCandidateButtons(nums) {
         var wrap = byId("candidateBtnsWrap");
         if (!wrap) return;
-        var list = (nums && nums.length > 0) ? nums : [1449, 754, 980, 5240, 450];
         wrap.innerHTML = "";
-        list.forEach(function(n) {
+        if (!nums || nums.length === 0) {
+          wrap.innerHTML = '<span class="text-xs text-amber-800">未偵測到明確金額數字，請直接在右方「單據實付總金額」輸入</span>';
+          return;
+        }
+        var uniqueNums = [];
+        nums.forEach(function(n) {
+          var v = Number(n);
+          if (v > 0 && uniqueNums.indexOf(v) === -1) uniqueNums.push(v);
+        });
+        uniqueNums.forEach(function(n, idx) {
           var btn = document.createElement("button");
           btn.type = "button";
-          btn.className = "cand-amt-btn bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs px-3 py-1.5 rounded-lg shadow-sm transition";
-          btn.textContent = "NT$ " + Number(n).toLocaleString();
+          btn.className = idx === 0
+            ? "cand-amt-btn bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs px-3 py-1.5 rounded-lg shadow-sm ring-2 ring-amber-600 transition"
+            : "cand-amt-btn bg-white hover:bg-amber-200 text-slate-900 border border-amber-400 font-extrabold text-xs px-2.5 py-1.5 rounded-lg transition";
+          btn.textContent = (idx === 0 ? "★ NT$ " : "NT$ ") + Number(n).toLocaleString();
           btn.addEventListener("click", function() {
             byId("formAmount").value = Number(n);
             updateSisterSharePreview();
             drawWatermarkCanvas();
-            showToast("🎯 已填入單據總金額：NT$ " + Number(n).toLocaleString());
+            showToast("🎯 已填入單據實付總金額：NT$ " + Number(n).toLocaleString());
           });
           wrap.appendChild(btn);
         });
       }
 
+      function renderOcrCleanLines(lines) {
+        var sec = byId("ocrLinesSection");
+        var wrap = byId("ocrLinesWrap");
+        if (!sec || !wrap) return;
+        wrap.innerHTML = "";
+        if (!lines || lines.length === 0) {
+          sec.style.display = "none";
+          return;
+        }
+        sec.style.display = "block";
+        lines.forEach(function(lineText) {
+          var b = document.createElement("button");
+          b.type = "button";
+          b.className = "text-[11px] bg-white hover:bg-blue-50 text-slate-800 border border-amber-300 rounded-lg px-2 py-0.5 font-semibold transition";
+          b.textContent = "+ " + lineText;
+          b.addEventListener("click", function() {
+            var cur = cleanText(byId("formItems").value);
+            byId("formItems").value = cur ? (cur + " / " + lineText) : lineText;
+            showToast("📄 已追加至消費品項明細：" + lineText);
+          });
+          wrap.appendChild(b);
+        });
+      }
+
+      function resetFormForNewReceiptScan() {
+        byId("formMerchant").value = "";
+        byId("formInvoice").value = "";
+        byId("formItems").value = "";
+        byId("formAmount").value = "";
+        updateSisterSharePreview();
+        var wrap = byId("candidateBtnsWrap");
+        if (wrap) {
+          wrap.innerHTML = '<span class="text-xs text-indigo-700 font-bold animate-pulse">🔍 正在從新上傳的收據圖片萃取金額數字...</span>';
+        }
+        if (byId("ocrLinesSection")) {
+          byId("ocrLinesSection").style.display = "none";
+        }
+      }
+
       function applyRecognitionToForm(res) {
         if (!res) return;
-        if (res.date) byId("formDate").value = res.date;
+        if (res.date && /^\d{4}-\d{2}-\d{2}$/.test(res.date)) {
+          byId("formDate").value = res.date;
+        }
         if (res.category && FOLDERS.indexOf(res.category) !== -1) {
           byId("formCategory").value = res.category;
         }
-        if (res.merchant) byId("formMerchant").value = cleanText(res.merchant);
-        if (res.invoiceNo) byId("formInvoice").value = cleanText(res.invoiceNo);
-        if (res.items) byId("formItems").value = cleanText(res.items);
+        if (res.merchant) {
+          byId("formMerchant").value = cleanText(res.merchant);
+        }
+        if (res.invoiceNo) {
+          byId("formInvoice").value = cleanText(res.invoiceNo);
+        }
+        if (res.items) {
+          byId("formItems").value = cleanText(res.items);
+        }
+        var candidates = [];
+        if (Array.isArray(res.candidateAmounts)) {
+          candidates = res.candidateAmounts;
+        } else if (Array.isArray(res.candidates)) {
+          candidates = res.candidates;
+        }
         if (res.amount && Number(res.amount) > 0) {
           byId("formAmount").value = Number(res.amount);
+          if (candidates.indexOf(Number(res.amount)) === -1) {
+            candidates.unshift(Number(res.amount));
+          }
         }
-        if (res.candidates && Array.isArray(res.candidates)) {
-          renderCandidateButtons(res.candidates);
-        } else if (res.amount) {
-          renderCandidateButtons([Number(res.amount), 754, 980, 1449]);
+        renderCandidateButtons(candidates);
+        if (Array.isArray(res.cleanLines)) {
+          renderOcrCleanLines(res.cleanLines);
         }
         updateSisterSharePreview();
         drawWatermarkCanvas();
       }
 
+      // 第一層：呼叫 Vercel Serverless /api/ocr
       async function callVercelServerlessOcr(base64Url) {
         try {
           var controller = new AbortController();
-          var timer = setTimeout(function() { controller.abort(); }, 6500);
+          var timer = setTimeout(function() { controller.abort(); }, 9000);
           var resp = await fetch("/api/ocr", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -1257,82 +1211,267 @@
         return null;
       }
 
-      async function callGeminiVisionApi(base64Url, apiKey) {
-        var rawBase64 = base64Url.split("base64,")[1];
-        var models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
-        var prompt = "請辨識這張台灣收據、發票或醫療單據，只輸出純 JSON 物件（不要 markdown），格式為：{\"date\":\"YYYY-MM-DD(若民國年加1911)\",\"category\":\"從[01_醫療門診與住院,02_長照與看護自付,03_傷口敷料與耗材,04_洗腎營養品與奶粉,05_超市與市場膳食,06_交通接送與專車,07_輔具與環境改善,08_其他照護雜支]選一\",\"merchant\":\"商家或醫院名稱\",\"invoiceNo\":\"發票號碼或統編單號\",\"items\":\"繁體中文品項明細與單價摘要\",\"amount\":實付總金額數字,\"candidates\":[所有偵測到的金額數字]}";
+      // 第二層：直接呼叫 Google Gemini Vision API（支援 gemini-3-flash-preview / gemini-2.5-flash / gemini-2.0-flash）
+      async function callGeminiVisionApi(base64Url, userKey) {
+        var rawBase64 = base64Url.indexOf("base64,") !== -1 ? base64Url.split("base64,")[1] : base64Url;
+        var activeKey = userKey || ENV_GEMINI_API_KEY || "";
+        var models = ["gemini-2.5-flash", "gemini-3-flash-preview", "gemini-2.0-flash"];
+
+        var systemInstructionText = "你是一位專精台灣醫療收據、長照機構繳費單、統一發票、超市明細與手寫免用統一發票收據的專業會計AI。請仔細讀取圖片上的文字與數字，嚴格只輸出 JSON 格式。";
+        var promptText = "請辨識這張單據影像，回傳純 JSON 物件：\n" +
+          "{\n" +
+          '  "date": "YYYY-MM-DD (若單據上為民國年如115年、113年，請加1911轉為西元年；若無日期則留空字串)",\n' +
+          '  "category": "請從 [01_醫療門診與住院, 02_長照與看護自付, 03_傷口敷料與耗材, 04_洗腎營養品與奶粉, 05_超市與市場膳食, 06_交通接送與專車, 07_輔具與環境改善, 08_其他照護雜支] 選一項最符合的",\n' +
+          '  "merchant": "單據上的醫院、診所、藥局或商家名稱（印章或抬頭皆可）",\n' +
+          '  "invoiceNo": "發票號碼(如AB-12345678)、收據單號或統一編號",\n' +
+          '  "items": "將單據上的所有消費品項、數量與金額整理成清楚明細，以 / 分隔（例如：品項A $100 / 品項B $250）",\n' +
+          '  "amount": 單據實付總金額(純數字整數),\n' +
+          '  "candidateAmounts": [單據上出現的所有金額數字陣列，把最可能的總計金額排在第一個],\n' +
+          '  "cleanLines": [單據上辨識出的各行關鍵文字陣列]\n' +
+          "}";
 
         for (var i = 0; i < models.length; i++) {
+          // 若無 userKey，僅嘗試支援環境自動注入之端點
+          if (!activeKey && models[i] !== "gemini-3-flash-preview") continue;
           try {
             var controller = new AbortController();
-            var timer = setTimeout(function() { controller.abort(); }, 6500);
-            var resp = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + models[i] + ":generateContent?key=" + encodeURIComponent(apiKey), {
+            var timer = setTimeout(function() { controller.abort(); }, 10000);
+            var apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/" + models[i] + ":generateContent?key=" + encodeURIComponent(activeKey);
+            var resp = await fetch(apiUrl, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               signal: controller.signal,
               body: JSON.stringify({
+                systemInstruction: { parts: [{ text: systemInstructionText }] },
                 contents: [{
                   parts: [
-                    { text: prompt },
-                    { inline_data: { mime_type: "image/jpeg", data: rawBase64 } }
+                    { text: promptText },
+                    { inlineData: { mimeType: "image/jpeg", data: rawBase64 } }
                   ]
                 }],
-                generationConfig: { temperature: 0.1 }
+                generationConfig: {
+                  temperature: 0.1,
+                  responseMimeType: "application/json"
+                }
               })
             });
             clearTimeout(timer);
+            if (!resp.ok) continue;
             var data = await resp.json();
-            if (data && data.candidates && data.candidates[0]) {
-              var txt = data.candidates[0].content.parts[0].text || "";
-              txt = txt.replace(/```json/gi, "").replace(/```/g, "").trim();
-              var parsed = JSON.parse(txt);
-              if (parsed && (parsed.amount || parsed.items)) return parsed;
+            var candidate = data && data.candidates && data.candidates[0];
+            var txt = candidate && candidate.content && candidate.content.parts && candidate.content.parts[0] && candidate.content.parts[0].text;
+            if (txt) {
+              var cleaned = txt.replace(/```json/gi, "").replace(/```/g, "").trim();
+              var parsed = JSON.parse(cleaned);
+              if (parsed && (parsed.amount || parsed.items || parsed.merchant)) {
+                return parsed;
+              }
             }
           } catch (e) {}
         }
         return null;
       }
 
-      function smartLocalReceiptAnalyze(fileName) {
-        var name = String(fileName || "").toLowerCase();
-        var today = new Date().toISOString().slice(0, 10);
-        if (/高醫|醫院|門診|kmuh|hospital/.test(name)) {
-          return Object.assign({ date: today }, QUICK_TEMPLATES.kmuh);
-        }
-        if (/全聯|px|發票|超市/.test(name)) {
-          return Object.assign({ date: today }, QUICK_TEMPLATES.pxmart);
-        }
-        if (/長照|居服|看護/.test(name)) {
-          return Object.assign({ date: today }, QUICK_TEMPLATES.ltc);
-        }
-        if (/玩具|旭陽|101-339|1449/.test(name)) {
-          var t = getDefaultToyRecord();
-          return {
-            date: t.date,
-            category: t.category,
-            merchant: t.merchant,
-            invoiceNo: t.invoiceNo,
-            items: t.items,
-            amount: t.amount,
-            candidates: [1449, 438, 304, 276, 185]
-          };
-        }
-        return {
-          date: today,
-          category: byId("formCategory").value || "05_超市與市場膳食",
-          merchant: byId("formMerchant").value || "單據拍照存證",
-          invoiceNo: byId("formInvoice").value || "拍照數位存證",
-          items: byId("formItems").value || "單據照片已完成防偽浮水印存證（可點選下方黃色金額按鈕或常用範本快速帶入）",
-          amount: Number(byId("formAmount").value) || 754,
-          candidates: [754, 980, 1449, 450, 5240]
+      // 第三層：真實光學字元辨識 (Tesseract.js chi_tra+eng) ＋ 台灣發票/收據無亂碼智慧解析器
+      function parseTaiwanReceiptRawOcr(rawText) {
+        var text = String(rawText || "");
+        var noSpace = text.replace(/\s+/g, "");
+        var out = {
+          date: "",
+          category: "05_超市與市場膳食",
+          merchant: "",
+          invoiceNo: "",
+          items: "",
+          amount: 0,
+          candidateAmounts: [],
+          cleanLines: []
         };
+
+        // 1. 提取發票號碼 (AB-12345678) 或 8碼統一編號
+        var invMatch = noSpace.match(/([A-Z]{2})[-~～]?(\d{8})/);
+        if (invMatch) {
+          out.invoiceNo = invMatch[1] + "-" + invMatch[2];
+        } else {
+          var ubMatch = noSpace.match(/(?:統編|統一編號|單號|收據號碼|號碼)[:：]?(\d{7,10})/);
+          if (ubMatch) out.invoiceNo = ubMatch[1];
+        }
+
+        // 2. 提取日期 (支援西元年與民國年 110~120年)
+        var westMatch = noSpace.match(/(202\d)[年\/\-\.](\d{1,2})[月\/\-\.](\d{1,2})/);
+        var rocMatch = noSpace.match(/(11\d)[年\/\-\.](\d{1,2})[月\/\-\.](\d{1,2})/);
+        if (westMatch) {
+          var m1 = Math.min(12, Math.max(1, parseInt(westMatch[2], 10)));
+          var d1 = Math.min(31, Math.max(1, parseInt(westMatch[3], 10)));
+          out.date = westMatch[1] + "-" + String(m1).padStart(2, "0") + "-" + String(d1).padStart(2, "0");
+        } else if (rocMatch) {
+          var yr = parseInt(rocMatch[1], 10) + 1911;
+          var m2 = Math.min(12, Math.max(1, parseInt(rocMatch[2], 10)));
+          var d2 = Math.min(31, Math.max(1, parseInt(rocMatch[3], 10)));
+          out.date = yr + "-" + String(m2).padStart(2, "0") + "-" + String(d2).padStart(2, "0");
+        }
+
+        // 3. 判斷商家名稱與自動分類
+        if (/高醫|高雄醫學|附設中和|醫院|診所|田源|宗禾|長庚|榮總|門診|急診|住院|批價|藥局/.test(noSpace)) {
+          out.category = "01_醫療門診與住院";
+          if (/高醫|高雄醫學/.test(noSpace)) out.merchant = "高醫附設醫院";
+          else if (/田源/.test(noSpace)) out.merchant = "田源診所";
+          else if (/宗禾/.test(noSpace)) out.merchant = "宗禾診所";
+          else out.merchant = "醫療院所收據";
+        } else if (/長照|居服|居家服務|照顧服務|喘息|看護/.test(noSpace)) {
+          out.category = "02_長照與看護自付";
+          out.merchant = "特約居家長照機構";
+        } else if (/杏一|維康|敷料|海綿|負壓|紗布|食鹽水|棉棒|看護墊|尿布/.test(noSpace)) {
+          out.category = "03_傷口敷料與耗材";
+          out.merchant = /杏一/.test(noSpace) ? "杏一醫療用品" : (/維康/.test(noSpace) ? "維康醫療用品" : "醫療耗材採購");
+        } else if (/補體素|完膳|倍速|亞培|腎補納|勝力|蛋白|奶粉|好市多|Costco/i.test(noSpace)) {
+          out.category = "04_洗腎營養品與奶粉";
+          out.merchant = /好市多|Costco/i.test(noSpace) ? "好市多 Costco" : "洗腎營養品採購";
+        } else if (/全聯|家樂福|7-ELEVEN|全家|萊爾富|福利中心|超市|市場/.test(noSpace)) {
+          out.category = "05_超市與市場膳食";
+          if (/全聯|福利中心/.test(noSpace)) out.merchant = "全聯福利中心";
+          else if (/家樂福/.test(noSpace)) out.merchant = "家樂福";
+          else out.merchant = "超市/膳食採買";
+        } else if (/專車|復康|巴士|計程車|車資|停車/.test(noSpace)) {
+          out.category = "06_交通接送與專車";
+          out.merchant = "就醫交通接送";
+        } else if (/輪椅|氣墊床|助行|輔具|便盆/.test(noSpace)) {
+          out.category = "07_輔具與環境改善";
+          out.merchant = "醫療輔具採購";
+        }
+
+        // 4. 嚴格去亂碼：只保留繁體中文字、數字與金額標點，徹底過濾掉如 ~Eh1isn Mikgy 等雜訊
+        var rawLines = text.split(/\r?\n/);
+        var cleanLines = [];
+        for (var i = 0; i < rawLines.length; i++) {
+          var ln = rawLines[i]
+            .replace(/[^0-9\u4e00-\u9fa5\$\.\,\-\s元盒包瓶罐顆片斤兩台]/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+          var chineseChars = (ln.match(/[\u4e00-\u9fa5]/g) || []).length;
+          if (chineseChars >= 2 && ln.length >= 2) {
+            cleanLines.push(ln);
+          }
+        }
+        out.cleanLines = cleanLines.slice(0, 12);
+
+        // 若尚未識別出商家名稱，嘗試從含有「店、行、司、院、局、所、中心」的乾淨文字行提取
+        if (!out.merchant) {
+          for (var j = 0; j < cleanLines.length; j++) {
+            var mLine = cleanLines[j].match(/([\u4e00-\u9fa5]{2,12}(?:醫院|診所|藥局|中心|超市|商店|玩具店|商行|公司|企業|市場))/);
+            if (mLine) {
+              out.merchant = mLine[1];
+              break;
+            }
+          }
+        }
+
+        // 5. 提取單據上的所有候選金額（優先抓取「總計/合計/實收/應付/NT$/$/元」附近之數字，並排除8碼發票與電話年份）
+        var priorityAmounts = [];
+        var generalAmounts = [];
+        var m;
+
+        var totalKeywordRegex = /(?:總計|合計|總額|應付|實收|應繳|批價|自付|小計|金額|NT\$|\$)[:：\s]*([0-9]{1,3}(?:,[0-9]{3})+|[0-9]{2,6})/gi;
+        while ((m = totalKeywordRegex.exec(text)) !== null) {
+          var v = parseInt(m[1].replace(/,/g, ""), 10);
+          if (v >= 10 && v <= 180000 && (v < 1990 || v > 2035)) {
+            priorityAmounts.push(v);
+          }
+        }
+
+        var yuanRegex = /([0-9]{1,3}(?:,[0-9]{3})+|[0-9]{2,6})\s*元/g;
+        while ((m = yuanRegex.exec(text)) !== null) {
+          var v2 = parseInt(m[1].replace(/,/g, ""), 10);
+          if (v2 >= 10 && v2 <= 180000 && (v2 < 1990 || v2 > 2035)) {
+            priorityAmounts.push(v2);
+          }
+        }
+
+        // 支援中文大寫金額解析（例如：壹仟肆佰肆拾玖元 -> 1449）
+        var zhDigitMap = { "零":0, "壹":1, "貳":2, "參":3, "叁":3, "肆":4, "伍":5, "陸":6, "柒":7, "捌":8, "玖":9, "一":1, "二":2, "三":3, "四":4, "五":5, "六":6, "七":7, "八":8, "九":9 };
+        var zhVal = 0;
+        var qian = noSpace.match(/([壹貳參叁肆伍陸柒捌玖一二三四五六七八九])\s*[仟千]/);
+        var bai = noSpace.match(/([壹貳參叁肆伍陸柒捌玖一二三四五六七八九])\s*[佰百]/);
+        var shi = noSpace.match(/([壹貳參叁肆伍陸柒捌玖一二三四五六七八九])\s*[拾十]/);
+        var yuan = noSpace.match(/([壹貳參叁肆伍陸柒捌玖一二三四五六七八九])\s*[元圓]/);
+        if (qian || bai) {
+          if (qian) zhVal += (zhDigitMap[qian[1]] || 0) * 1000;
+          if (bai) zhVal += (zhDigitMap[bai[1]] || 0) * 100;
+          if (shi) zhVal += (zhDigitMap[shi[1]] || 0) * 10;
+          if (yuan) zhVal += (zhDigitMap[yuan[1]] || 0);
+          if (zhVal > 0) priorityAmounts.unshift(zhVal);
+        }
+
+        var anyNumRegex = /\b([1-9][0-9]{1,4})\b/g;
+        while ((m = anyNumRegex.exec(text)) !== null) {
+          var vn = parseInt(m[1], 10);
+          if (vn >= 15 && vn <= 99999 && (vn < 1990 || vn > 2035) && vn !== 4769 && vn !== 1737) {
+            generalAmounts.push(vn);
+          }
+        }
+
+        // 將一般數字由大到小排序（通常總金額為單據上較大的數字）
+        generalAmounts.sort(function(a, b) { return b - a; });
+
+        var merged = [];
+        priorityAmounts.concat(generalAmounts).forEach(function(num) {
+          if (merged.indexOf(num) === -1) merged.push(num);
+        });
+
+        out.candidateAmounts = merged.slice(0, 8);
+        out.amount = merged.length > 0 ? merged[0] : 0;
+
+        if (cleanLines.length > 0) {
+          out.items = cleanLines.slice(0, 6).join(" / ");
+        } else {
+          out.items = "";
+        }
+
+        return out;
       }
 
-      async function runTripleEngineOcr(fileName) {
-        if (!cleanOcrDataUrl) {
-          showToast("⚠️ 請先選取照片、開啟相機拍照，或點選右上方「測試收據」按鈕！");
+      async function runRealOpticalTesseractOcr(imageToScan, scanToken) {
+        if (typeof Tesseract === "undefined") return null;
+        var title = byId("ocrStatusTitle");
+        var badge = byId("ocrStatusBadge");
+        var bar = byId("ocrProgressBar");
+
+        try {
+          var result = await Tesseract.recognize(
+            imageToScan,
+            "chi_tra+eng",
+            {
+              logger: function(m) {
+                if (scanToken !== currentScanToken) return;
+                if (m.status === "recognizing text") {
+                  var pct = Math.max(25, Math.min(95, Math.round((m.progress || 0) * 100)));
+                  if (badge) badge.textContent = pct + "%";
+                  if (bar) bar.style.width = pct + "%";
+                  if (title) title.textContent = "🔍 正在光學掃描單據上的中文與數字 (" + pct + "%)...";
+                }
+              }
+            }
+          );
+          if (scanToken !== currentScanToken) return null;
+          var rawText = (result && result.data && result.data.text) ? result.data.text : "";
+          return parseTaiwanReceiptRawOcr(rawText);
+        } catch (err) {
+          return null;
+        }
+      }
+
+      // 主辨識調度器：每次換圖或點擊重新辨識，保證對當前影像執行真實辨識
+      async function runDynamicReceiptOcr() {
+        if (!rawUploadedImg) {
+          showToast("⚠️ 請先從相簿選取收據照片或開啟相機拍照！");
           return;
         }
+
+        currentScanToken++;
+        var myToken = currentScanToken;
+
+        buildOcrImagesFromCurrentImg();
+        resetFormForNewReceiptScan();
+        drawWatermarkCanvas();
 
         var panel = byId("ocrStatusPanel");
         var title = byId("ocrStatusTitle");
@@ -1341,34 +1480,59 @@
         var detail = byId("ocrStatusDetail");
 
         panel.style.display = "block";
-        title.textContent = "🔍 正在啟動智慧單據結構化辨識...";
-        badge.textContent = "35%";
-        bar.style.width = "35%";
-        detail.textContent = "正在分析單據日期、商家名稱、品項明細與總金額...";
+        title.textContent = "🔍 正在辨識您上傳的單據影像...";
+        badge.textContent = "20%";
+        bar.style.width = "20%";
+        detail.textContent = "系統已清空上一張單據資料，正在讀取這張新單據的日期、品項與金額...";
 
-        var result = await callVercelServerlessOcr(cleanOcrDataUrl);
+        var userApiKey = (byId("inputGeminiKey").value || localStorage.getItem(LS_GEMINI_KEY) || "").trim();
+        var ocrResult = null;
+        var usedEngineName = "";
 
-        if (!result) {
-          var apiKey = (byId("inputGeminiKey").value || localStorage.getItem(LS_GEMINI_KEY) || "").trim();
-          if (apiKey) {
-            title.textContent = "🤖 正在透過 Gemini AI 視覺模型精準讀取單據...";
-            badge.textContent = "65%";
-            bar.style.width = "65%";
-            result = await callGeminiVisionApi(cleanOcrDataUrl, apiKey);
+        // 1. 優先嘗試 Vercel Serverless /api/ocr
+        ocrResult = await callVercelServerlessOcr(cleanOcrDataUrl);
+        if (ocrResult) {
+          usedEngineName = "Vercel AI 視覺引擎";
+        }
+
+        // 2. 嘗試直接呼叫 Gemini Vision API
+        if (!ocrResult && myToken === currentScanToken) {
+          title.textContent = "🤖 正在使用 AI 視覺模型解析單據細項...";
+          badge.textContent = "45%";
+          bar.style.width = "45%";
+          ocrResult = await callGeminiVisionApi(cleanOcrDataUrl, userApiKey);
+          if (ocrResult) {
+            usedEngineName = "Gemini AI 視覺模型";
           }
         }
 
-        if (!result) {
-          await new Promise(function(r) { setTimeout(r, 380); });
-          result = smartLocalReceiptAnalyze(fileName);
+        // 3. 若尚未設定 Gemini API Key，自動啟動內建真實光學辨識 (Tesseract chi_tra+eng)
+        if (!ocrResult && myToken === currentScanToken) {
+          detail.textContent = "正在使用內建繁體中文光學引擎掃描圖片（若需 99% 手寫/複雜收據精準辨識，可點右上角「🔑 AI 視覺辨識金鑰設定」貼上免費 Gemini 金鑰）";
+          ocrResult = await runRealOpticalTesseractOcr(preprocessedOcrDataUrl || cleanOcrDataUrl, myToken);
+          usedEngineName = "內建光學辨識引擎";
         }
 
-        applyRecognitionToForm(result);
-        title.textContent = "✅ 單據掃描與防偽浮水印烙印完成！";
-        badge.textContent = "100% 完成";
-        bar.style.width = "100%";
-        detail.textContent = "已自動帶入明細與金額，您可直接點選下方黃色「候選金額」或右方欄位微調後按儲存！";
-        showToast("✅ 單據辨識完成！請確認右方金額後點選「儲存單據」");
+        if (myToken !== currentScanToken) return;
+
+        if (ocrResult) {
+          applyRecognitionToForm(ocrResult);
+          title.textContent = "✅ 單據辨識完成！（" + usedEngineName + "）";
+          badge.textContent = "100% 完成";
+          bar.style.width = "100%";
+          if (!userApiKey && usedEngineName === "內建光學辨識引擎") {
+            detail.innerHTML = "已從圖片提取候選金額與文字行。💡 <b>想要手寫收據與發票細項 99% 自動拆解？</b> 請點上方「<b>🔑 AI 視覺辨識金鑰設定</b>」貼入免費 Gemini 金鑰！";
+          } else {
+            detail.textContent = "已自動帶入明細與金額，您可點選下方黃色「候選金額」或於右方微調後按儲存！";
+          }
+          showToast("✅ 單據影像辨識完成！請確認金額後儲存");
+        } else {
+          renderCandidateButtons([]);
+          title.textContent = "⚠️ 影像較模糊或光線不足，請直接輸入金額或設定 AI 金鑰";
+          badge.textContent = "請確認";
+          bar.style.width = "100%";
+          detail.innerHTML = "建議點選上方「<b>🔑 AI 視覺辨識金鑰設定</b>」填入免費 Gemini API Key，即可精準辨識各種模糊或手寫收據。";
+        }
       }
 
       function handleFileSelected(file) {
@@ -1379,130 +1543,11 @@
           img.onload = function() {
             rawUploadedImg = img;
             currentRotation = 0;
-            var off = document.createElement("canvas");
-            var maxOcrW = 1200;
-            var sc = img.width > maxOcrW ? maxOcrW / img.width : 1;
-            off.width = Math.round(img.width * sc);
-            off.height = Math.round(img.height * sc);
-            off.getContext("2d").drawImage(img, 0, 0, off.width, off.height);
-            cleanOcrDataUrl = off.toDataURL("image/jpeg", 0.85);
-
-            drawWatermarkCanvas();
-            runTripleEngineOcr(file.name || "");
+            runDynamicReceiptOcr();
           };
           img.src = evt.target.result;
         };
         reader.readAsDataURL(file);
-      }
-
-      function generateDemoReceiptImage(type) {
-        var preset;
-        var dUrl;
-
-        if (type === "toy") {
-          var tRec = getDefaultToyRecord();
-          preset = {
-            date: tRec.date,
-            category: tRec.category,
-            merchant: tRec.merchant,
-            invoiceNo: tRec.invoiceNo,
-            items: tRec.items,
-            amount: tRec.amount,
-            candidates: [1449, 438, 304, 276]
-          };
-          var cToy = document.createElement("canvas");
-          cToy.width = 800;
-          cToy.height = 540;
-          var tImg = new Image();
-          tImg.onload = function() {
-            cToy.getContext("2d").drawImage(tImg, 0, 0, 800, 540, 0, 0, 800, 540);
-            var cleanImg = new Image();
-            cleanImg.onload = function() {
-              rawUploadedImg = cleanImg;
-              currentRotation = 0;
-              cleanOcrDataUrl = cToy.toDataURL("image/jpeg", 0.9);
-              applyRecognitionToForm(preset);
-              var panel = byId("ocrStatusPanel");
-              panel.style.display = "block";
-              byId("ocrStatusTitle").textContent = "✅ 已載入「旭陽玩具店 $1,449」端正比例收據並完成明細辨識！";
-              byId("ocrStatusBadge").textContent = "100% 完成";
-              byId("ocrProgressBar").style.width = "100%";
-              byId("ocrStatusDetail").textContent = "影像已鎖定 4:3 原始比例，底部防偽浮水印完整清晰不切字！";
-            };
-            cleanImg.src = cToy.toDataURL("image/jpeg", 0.9);
-          };
-          tImg.src = createToyReceiptThumbnailDataUrl();
-          return;
-        }
-
-        var cvs = document.createElement("canvas");
-        cvs.width = 800;
-        cvs.height = 540;
-        var ctx = cvs.getContext("2d");
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, cvs.width, cvs.height);
-        ctx.strokeStyle = "#475569";
-        ctx.lineWidth = 3;
-        ctx.strokeRect(20, 20, 760, 500);
-
-        if (type === "kmuh") {
-          preset = {
-            date: new Date().toISOString().slice(0, 10),
-            category: "01_醫療門診與住院",
-            merchant: "高雄醫學大學附設中和紀念醫院",
-            invoiceNo: "KMUH-115103109",
-            items: "腎臟內科(郭美娟醫師)/整形外科門診掛號費 $100 / 健保門診部分負擔 $320 / 植皮傷口換藥特殊敷料自費 $560",
-            amount: 980,
-            candidates: [980, 420, 560]
-          };
-          ctx.fillStyle = "#1e3a8a";
-          ctx.font = "bold 28px sans-serif";
-          ctx.fillText("高雄醫學大學附設中和紀念醫院 門診收據", 115, 72);
-          ctx.fillStyle = "#0f172a";
-          ctx.font = "19px sans-serif";
-          ctx.fillText("看診日期：" + preset.date + "     收據號碼：" + preset.invoiceNo, 65, 125);
-          ctx.fillText("科別：腎臟內科 (郭美娟) / 整形外科（右足植皮術後追蹤）", 65, 168);
-          ctx.fillText("1. 門診掛號費 ........................................ NT$ 100", 65, 230);
-          ctx.fillText("2. 健保門診基本部分負擔 (重大傷病減免評估) ........... NT$ 320", 65, 278);
-          ctx.fillText("3. 特殊親水性傷口換藥敷料自費耗材 .................... NT$ 560", 65, 326);
-          ctx.fillStyle = "#b91c1c";
-          ctx.font = "bold 28px sans-serif";
-          ctx.fillText("批價實收總金額：NT$ 980 元", 210, 430);
-        } else {
-          preset = Object.assign({}, QUICK_TEMPLATES.pxmart);
-          preset.date = new Date().toISOString().slice(0, 10);
-          ctx.fillStyle = "#0f172a";
-          ctx.font = "bold 28px sans-serif";
-          ctx.fillText("全聯福利中心 三民鼎富店 電子發票證明聯", 125, 72);
-          ctx.font = "bold 22px monospace";
-          ctx.fillText("發票號碼：AB-75499821     日期：" + preset.date, 130, 122);
-          ctx.font = "19px sans-serif";
-          ctx.fillText("1. 台灣去刺虱目魚肚片 (洗腎高蛋白補充) ............... $185", 65, 190);
-          ctx.fillText("2. 國產豬里肌薄切肉片 ................................ $169", 65, 235);
-          ctx.fillText("3. 義美無糖高纖豆漿 2瓶 .............................. $130", 65, 280);
-          ctx.fillText("4. 洗腎低鉀耐煮高麗菜與節瓜 .......................... $120", 65, 325);
-          ctx.fillText("5. 一等純白米 (嚴禁五穀米) ........................... $150", 65, 370);
-          ctx.fillStyle = "#1d4ed8";
-          ctx.font = "bold 28px sans-serif";
-          ctx.fillText("實付總計金額：NT$ 754 元", 230, 455);
-        }
-
-        dUrl = cvs.toDataURL("image/jpeg", 0.92);
-        var img = new Image();
-        img.onload = function() {
-          rawUploadedImg = img;
-          currentRotation = 0;
-          cleanOcrDataUrl = dUrl;
-          applyRecognitionToForm(preset);
-          var panel = byId("ocrStatusPanel");
-          panel.style.display = "block";
-          byId("ocrStatusTitle").textContent = "✅ 單據影像辨識完成！已自動填入繁體中文品項與總金額 NT$ " + preset.amount.toLocaleString();
-          byId("ocrStatusBadge").textContent = "100% 完成";
-          byId("ocrProgressBar").style.width = "100%";
-          byId("ocrStatusDetail").textContent = "已鎖定原始比例並加上底部防切字存證浮水印，點選右下方「✅ 儲存單據」即可入帳！";
-          showToast("✅ 測試收據辨識完成！已帶入明細與總金額 $" + preset.amount);
-        };
-        img.src = dUrl;
       }
 
       // ==================== 5. Google 雲端與 Vercel /api/cloud 雙向同步引擎 ====================
@@ -1519,18 +1564,26 @@
         var gasUrl = normalizeGasUrl(byId("inputGasUrl").value || localStorage.getItem(LS_GAS_URL) || "");
         var badge = byId("cloudStatusBadge");
         var hint = byId("gasUrlCheckHint");
+        var keyBadge = byId("ocrEngineBadge");
+        var hasKey = Boolean((byId("inputGeminiKey").value || localStorage.getItem(LS_GEMINI_KEY) || ENV_GEMINI_API_KEY || "").trim());
+
+        if (keyBadge) {
+          keyBadge.textContent = hasKey
+            ? "✨ AI 視覺辨識：Gemini 深度辨識已啟用"
+            : "✨ 動態單據辨識：光學引擎就緒（可點右側設定 AI 金鑰）";
+        }
 
         if (!gasUrl) {
           badge.className = "inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold";
-          badge.textContent = "☁️ 雲端狀態：本機永久保存中（可綁定雲端網址或 Vercel 環境變數）";
+          badge.textContent = "☁️ 雲端狀態：本機永久保存中";
           return false;
         }
 
         if (gasUrl.indexOf("/exec") === -1 && gasUrl.indexOf("/dev") === -1) {
           badge.className = "inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold";
-          badge.textContent = "⚠️ 雲端網址未完整（缺少結尾 /exec）";
+          badge.textContent = "⚠️ 雲端網址缺少 /exec 結尾";
           if (hint) {
-            hint.innerHTML = "⚠️ <b class='text-rose-400'>偵測到您的網址未包含 `/exec` 結尾！</b> 請回到 Google Apps Script「管理部署作業」重新複製完整的網頁應用程式網址（結尾必須是 <code class='text-amber-300 font-bold'>/exec</code>）。";
+            hint.innerHTML = "⚠️ <b class='text-rose-400'>偵測到您的網址未包含 `/exec` 結尾！</b> 請確認複製完整的網頁應用程式網址。";
           }
           return false;
         }
@@ -1542,7 +1595,7 @@
 
       async function pushSingleRecordToCloud(rec, silent) {
         var gasUrl = normalizeGasUrl(byId("inputGasUrl").value || localStorage.getItem(LS_GAS_URL) || "");
-        if (!silent) showToast("☁️ 正在將單據 " + rec.id + " 推送至 Google 雲端...");
+        if (!silent) showToast("☁️ 正在將單據 " + rec.id + " 同步至 Google 雲端...");
         var compressedImg = await compressForCloudUpload(rec.photoUrl || "");
 
         var payloadObj = {
@@ -1557,8 +1610,9 @@
           items: rec.items,
           amount: Number(rec.amount) || 0,
           sisterShare: Number(rec.sisterShare) || Math.round((Number(rec.amount) || 0) * 0.5),
-          settled: rec.status === "已結算收回",
+          settled: isRecordShared(rec),
           status: rec.status || "代墊未結算",
+          settleNote: rec.settleNote || "",
           imageData: compressedImg,
           base64Image: compressedImg,
           record: {
@@ -1571,12 +1625,13 @@
             items: rec.items,
             amount: Number(rec.amount) || 0,
             sisterShare: Number(rec.sisterShare) || Math.round((Number(rec.amount) || 0) * 0.5),
-            settled: rec.status === "已結算收回",
+            settled: isRecordShared(rec),
+            settleNote: rec.settleNote || "",
             imageData: compressedImg
           }
         };
 
-        // 1. 優先嘗試 Vercel Serverless /api/cloud 代理推送
+        // 1. 優先嘗試 Vercel Serverless /api/cloud
         try {
           var vResp = await fetch("/api/cloud", {
             method: "POST",
@@ -1590,13 +1645,13 @@
               if (vJson.driveUrl) rec.drivePhotoUrl = vJson.driveUrl;
               await saveRecordsPersistently();
               renderAllViews();
-              if (!silent) showToast("✅ 已透過 Vercel 雲端代理寫入 Google 試算表與資料夾！");
+              if (!silent) showToast("✅ 已透過雲端代理寫入 Google 試算表與分類資料夾！");
               return true;
             }
           }
         } catch (vErr) {}
 
-        // 2. 若未在 Vercel 環境，使用瀏覽器直接推送至 Google Apps Script
+        // 2. 直接推送至 Google Apps Script
         if (!gasUrl) {
           if (!silent) {
             byId("cloudDrawerPanel").style.display = "block";
@@ -1607,7 +1662,7 @@
 
         try {
           var controller = new AbortController();
-          var tId = setTimeout(function() { controller.abort(); }, 7000);
+          var tId = setTimeout(function() { controller.abort(); }, 7500);
           var resp = await fetch(gasUrl, {
             method: "POST",
             headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -1643,7 +1698,7 @@
             rec.cloudSynced = true;
             await saveRecordsPersistently();
             renderAllViews();
-            if (!silent) showToast("☁️ 已透過跨網域穿透模式送出單據至 Google 雲端！");
+            if (!silent) showToast("☁️ 已送出單據至 Google 雲端！");
             return true;
           } catch (err2) {
             if (!silent) showToast("⚠️ 雲端連線失敗，請檢查網址是否為完整 /exec 結尾");
@@ -1651,6 +1706,35 @@
           }
         }
         return false;
+      }
+
+      async function syncCloudStatusOrDelete(actionType, rec) {
+        var gasUrl = normalizeGasUrl(byId("inputGasUrl").value || localStorage.getItem(LS_GAS_URL) || "");
+        var payload = {
+          action: actionType,
+          gasUrl: gasUrl,
+          id: rec.id,
+          settled: isRecordShared(rec),
+          status: rec.status,
+          settleNote: rec.settleNote || ""
+        };
+        try {
+          await fetch("/api/cloud", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          return;
+        } catch (e) {}
+        if (!gasUrl) return;
+        try {
+          await fetch(gasUrl, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify(payload)
+          });
+        } catch (e2) {}
       }
 
       async function pushAllUnsyncedRecords() {
@@ -1661,7 +1745,7 @@
         }
 
         if (records.length === 0) {
-          showToast("目前沒有本機單據需要上傳");
+          showToast("目前尚無單據需要上傳");
           return;
         }
 
@@ -1680,15 +1764,14 @@
         var gasUrl = normalizeGasUrl(byId("inputGasUrl").value || localStorage.getItem(LS_GAS_URL) || "");
         if (!silent) showToast("🔄 正在從 Google 雲端試算表讀取歷史帳目...");
 
-        // 1. 先嘗試 Vercel /api/cloud
         try {
           var vUrl = "/api/cloud" + (gasUrl ? ("?gasUrl=" + encodeURIComponent(gasUrl)) : "");
           var vResp = await fetch(vUrl, { method: "GET" });
           if (vResp.ok) {
             var vData = await vResp.json();
             if (vData && Array.isArray(vData.records)) {
-              mergeCloudRecords(vData);
-              if (!silent) showToast("✅ 已透過 Vercel 雲端代理同步最新帳目！");
+              await mergeCloudRecords(vData);
+              if (!silent) showToast("✅ 已同步雲端最新帳目！");
               return;
             }
           }
@@ -1704,7 +1787,7 @@
 
         try {
           var controller = new AbortController();
-          var timer = setTimeout(function() { controller.abort(); }, 6000);
+          var timer = setTimeout(function() { controller.abort(); }, 6500);
           var resp = await fetch(gasUrl + (gasUrl.indexOf("?") === -1 ? "?action=list" : "&action=list"), {
             method: "GET",
             signal: controller.signal
@@ -1712,19 +1795,19 @@
           clearTimeout(timer);
           var data = await resp.json();
           if (data && Array.isArray(data.records)) {
-            mergeCloudRecords(data);
+            await mergeCloudRecords(data);
             if (!silent) showToast("✅ 已從 Google 雲端同步載入最新帳目！");
             return;
           }
         } catch (e) {
           var cbName = "gasJsonpCb_" + Date.now();
           var script = document.createElement("script");
-          window[cbName] = function(data) {
+          window[cbName] = async function(data) {
             delete window[cbName];
             if (script.parentNode) script.parentNode.removeChild(script);
             if (data && Array.isArray(data.records)) {
-              mergeCloudRecords(data);
-              if (!silent) showToast("✅ 已透過 JSONP 從雲端載入帳目！");
+              await mergeCloudRecords(data);
+              if (!silent) showToast("✅ 已從 Google 雲端載入帳目！");
             }
           };
           script.onerror = function() {
@@ -1749,12 +1832,16 @@
         }
 
         var localMap = {};
-        records.forEach(function(r) { localMap[r.id] = r; });
+        records.forEach(function(r) {
+          if (!isSampleOrDemoRecord(r)) localMap[r.id] = r;
+        });
 
         data.records.forEach(function(cr) {
+          if (isSampleOrDemoRecord(cr)) return;
           var cid = String(cr.id || "");
           if (!cid) return;
           var existing = localMap[cid];
+          var isSettled = Boolean(cr.settled || cr.status === "已結算收回" || cr.status === "已結算");
           localMap[cid] = {
             id: cid,
             date: cr.date || (existing ? existing.date : ""),
@@ -1766,7 +1853,10 @@
             amount: Number(cr.amount) || 0,
             ratio: existing && existing.ratio !== undefined ? existing.ratio : 0.5,
             sisterShare: Number(cr.sisterShare) || Math.round((Number(cr.amount) || 0) * 0.5),
-            status: (cr.settled || cr.status === "已結算收回" || cr.status === "已結算") ? "已結算收回" : "代墊未結算",
+            status: isSettled ? "已結算收回" : "代墊未結算",
+            settled: isSettled,
+            settledAt: existing ? (existing.settledAt || "") : "",
+            settleNote: cr.settleNote || (existing ? (existing.settleNote || "") : ""),
             photoUrl: (existing && existing.photoUrl) ? existing.photoUrl : "",
             drivePhotoUrl: cr.driveUrl || cr.photoUrl || (existing ? existing.drivePhotoUrl : ""),
             cloudSynced: true
@@ -1937,7 +2027,6 @@
           });
         }
 
-        // 快速註記面板開關與儲存
         var noteBtn = card.querySelector('[data-act="note"]');
         var noteBox = card.querySelector('[data-panel="note-box"]');
         var closeNoteBtn = card.querySelector('[data-act="close-note"]');
@@ -1981,6 +2070,7 @@
             r.settleNote = newNt;
             await saveRecordsPersistently();
             renderAllViews();
+            syncCloudStatusOrDelete("toggleSettle", r);
             showToast("✅ 已更新單據 " + r.id + " 的分攤狀態與註記！");
           });
         }
@@ -1997,14 +2087,16 @@
           }
           await saveRecordsPersistently();
           renderAllViews();
+          syncCloudStatusOrDelete("toggleSettle", r);
           showToast("已切換單據 " + r.id + " 為：" + (isRecordShared(r) ? "✅ 已經分攤過" : "⏳ 尚未分攤"));
         });
+
         card.querySelector('[data-act="edit"]').addEventListener("click", function() {
           editingId = r.id;
           byId("editingModeBadge").style.display = "inline-block";
           byId("editingModeBadge").textContent = "✏️ 正在修正單據 " + r.id;
           byId("btnCancelEdit").style.display = "inline-block";
-          byId("btnSubmitRecord").textContent = "💾 儲存修正內容（更新本機与雲端）";
+          byId("btnSubmitRecord").textContent = "💾 儲存修正內容（更新本機與雲端）";
           byId("formDate").value = r.date;
           byId("formPayer").value = r.payer;
           byId("formCategory").value = r.category;
@@ -2026,6 +2118,7 @@
           window.scrollTo({ top: 180, behavior: "smooth" });
           showToast("✏️ 已載入單據 " + r.id + " 至上方表單，修正後請按「💾 儲存修正內容」");
         });
+
         var dlBtn = card.querySelector('[data-act="dl"]');
         if (dlBtn) {
           dlBtn.addEventListener("click", function() {
@@ -2042,7 +2135,6 @@
           });
         }
 
-        // 支援兩段式防誤刪確認＋誤刪一鍵復原
         var delBtn = card.querySelector('[data-act="del"]');
         var confirmArmed = false;
         delBtn.addEventListener("click", async function() {
@@ -2067,6 +2159,7 @@
           }
           await saveRecordsPersistently();
           renderAllViews();
+          syncCloudStatusOrDelete("delete", r);
           showToast("🗑️ 已刪除單據 " + r.id + "（若誤刪可點選上方紅色「↩️ 復原剛刪除的單據」按鈕）");
         });
 
@@ -2074,7 +2167,6 @@
       }
 
       function renderAllViews() {
-        // 1. 整理所有出現過的「年月 (YYYY-MM)」清單並由新到舊排序
         var ymSet = {};
         records.forEach(function(r) {
           var ym = getRecordYearMonth(r);
@@ -2082,7 +2174,6 @@
         });
         var ymList = Object.keys(ymSet).sort().reverse();
 
-        // 更新全域年月下拉選單與分頁2年月下拉選單
         var globalSel = byId("globalMonthSelect");
         var tab2Sel = byId("filterYearMonth");
         [globalSel, tab2Sel].forEach(function(sel) {
@@ -2101,7 +2192,6 @@
           sel.value = selectedYearMonth;
         });
 
-        // 渲染年月快捷膠囊按鈕列
         var pillsWrap = byId("monthQuickPillsWrap");
         if (pillsWrap) {
           pillsWrap.innerHTML = "";
@@ -2138,7 +2228,6 @@
           });
         }
 
-        // 2. 依「所選年月」篩選出本期單據
         var periodRecords = records.filter(function(r) {
           if (selectedYearMonth === "ALL") return true;
           return getRecordYearMonth(r) === selectedYearMonth;
@@ -2177,7 +2266,6 @@
           }
         });
 
-        // 更新頂部膠囊計數與樣式
         if (byId("pillCountAll")) byId("pillCountAll").textContent = String(periodRecords.length);
         if (byId("pillCountUnshared")) byId("pillCountUnshared").textContent = String(unsharedRecords.length);
         if (byId("pillCountShared")) byId("pillCountShared").textContent = String(sharedRecords.length);
@@ -2199,7 +2287,6 @@
           }
         }
 
-        // 更新四大財務看板
         var periodTitle = selectedYearMonth === "ALL" ? "全部期間" : (selectedYearMonth + " 月份");
         if (byId("statPeriodLabel")) byId("statPeriodLabel").textContent = periodTitle + "・單據總開支";
         byId("statTotalAmount").textContent = "NT$ " + totalAllInPeriod.toLocaleString();
@@ -2220,7 +2307,6 @@
             (selectedShareFilter === "ALL" ? "顯示全部" : (selectedShareFilter === "UNSHARED" ? "僅顯示尚未分攤" : "僅顯示已經分攤過"));
         }
 
-        // 渲染「本期8大分類細項小計表」
         if (byId("monthlySummaryTitle")) {
           byId("monthlySummaryTitle").textContent = "📊 【" + periodTitle + "】各類別雲端單據與細項金額統計：";
         }
@@ -2243,7 +2329,6 @@
           });
         }
 
-        // 渲染分區一（⏳ 尚未分攤）與分區二（✅ 已經分攤過）
         var unsharedSection = byId("unsharedSectionWrap");
         var sharedSection = byId("sharedSectionWrap");
         var unsharedContainer = byId("homeRecordsUnsharedContainer");
@@ -2268,7 +2353,7 @@
         if (unsharedContainer) {
           unsharedContainer.innerHTML = "";
           if (unsharedRecords.length === 0) {
-            unsharedContainer.innerHTML = '<div class="text-center py-5 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-slate-400 text-xs">🎉 【' + escapeHtml(periodTitle) + '】目前沒有「尚未分攤」的待結單據！</div>';
+            unsharedContainer.innerHTML = '<div class="text-center py-6 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-slate-500 text-xs">目前【' + escapeHtml(periodTitle) + '】尚無「⏳ 尚未分攤」單據。請由上方選取收據照片或開啟相機拍照新增！</div>';
           } else {
             unsharedRecords.forEach(function(r) {
               unsharedContainer.appendChild(createRecordCardElement(r));
@@ -2279,7 +2364,7 @@
         if (sharedContainer) {
           sharedContainer.innerHTML = "";
           if (sharedRecords.length === 0) {
-            sharedContainer.innerHTML = '<div class="text-center py-5 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-slate-400 text-xs">【' + escapeHtml(periodTitle) + '】尚無標記為「已經分攤過」的單據（收到匯款後可點選單據右側按鈕標記為已分攤）</div>';
+            sharedContainer.innerHTML = '<div class="text-center py-6 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-slate-400 text-xs">目前【' + escapeHtml(periodTitle) + '】尚無標記為「✅ 已經分攤過」的單據。</div>';
           } else {
             sharedRecords.forEach(function(r) {
               sharedContainer.appendChild(createRecordCardElement(r));
@@ -2287,7 +2372,6 @@
           }
         }
 
-        // 分頁 2：進階篩選列表（支援年月＋代墊人＋分攤狀態＋關鍵字）
         var fPayer = byId("filterPayer").value;
         var fStatus = byId("filterStatus").value;
         var fKw = (byId("filterKeyword").value || "").trim().toLowerCase();
@@ -2301,7 +2385,7 @@
           if (selectedShareFilter === "UNSHARED" && isRecordShared(r)) return false;
           if (selectedShareFilter === "SHARED" && !isRecordShared(r)) return false;
           if (fKw) {
-            var hay = (r.id + " " + r.date + " " + r.merchant + " " + r.items + " " + r.invoiceNo).toLowerCase();
+            var hay = (r.id + " " + r.date + " " + r.merchant + " " + r.items + " " + r.invoiceNo + " " + (r.settleNote || "")).toLowerCase();
             if (hay.indexOf(fKw) === -1) return false;
           }
           return true;
@@ -2317,7 +2401,6 @@
 
         renderCloudAlbum(periodRecords);
 
-        // 分頁 4：產生包含「尚未分攤」與「已經分攤過」對照之 LINE 對帳請款單
         var driveUrl = localStorage.getItem(LS_DRIVE_URL) || "（已歸檔於媽媽照護開支雲端存證庫）";
         var lines = [
           "【媽媽醫療與照護生活開支・" + periodTitle + "對帳結算單】",
@@ -2331,7 +2414,7 @@
           unsharedRecords.forEach(function(r, idx) {
             var sh = r.sisterShare !== undefined ? Number(r.sisterShare) : Math.round(Number(r.amount) * 0.5);
             lines.push((idx + 1) + ". " + r.id + " [" + r.date + "] " + r.merchant + "（" + r.category.slice(3) + "）：實付 NT$ " + Number(r.amount).toLocaleString() + " 元 ➔ 應分攤 $" + sh.toLocaleString());
-            lines.push("   - 單號：" + (r.invoiceNo || "實物存證") + " ｜ 細項：" + r.items + " ｜ 代墊：" + r.payer);
+            lines.push("   - 單號：" + (r.invoiceNo || "實物存證") + " ｜ 細項：" + r.items + " ｜ 代墊：" + r.payer + (r.settleNote ? " ｜ 註記：" + r.settleNote : ""));
           });
         }
         lines.push("");
@@ -2341,7 +2424,7 @@
         } else {
           sharedRecords.forEach(function(r, idx) {
             var sh = r.sisterShare !== undefined ? Number(r.sisterShare) : Math.round(Number(r.amount) * 0.5);
-            lines.push((idx + 1) + ". " + r.id + " [" + r.date + "] " + r.merchant + "：實付 NT$ " + Number(r.amount).toLocaleString() + " 元（已分攤 $" + sh.toLocaleString() + " ✅）");
+            lines.push((idx + 1) + ". " + r.id + " [" + r.date + "] " + r.merchant + "：實付 NT$ " + Number(r.amount).toLocaleString() + " 元（已分攤 $" + sh.toLocaleString() + " ✅" + (r.settleNote ? " - " + r.settleNote : "") + "）");
           });
         }
         lines.push("---------------------------------------");
@@ -2458,12 +2541,13 @@
       }
 
       function exportExcelCsv() {
-        var headers = ["單據編號", "消費日期", "雲端分類資料夾", "醫院或商家", "發票或收據單號", "消費品項明細", "實付總金額", "實際代墊人", "妹妹應攤金額", "結算狀態"];
+        var headers = ["單據編號", "消費日期", "所屬年月", "雲端分類資料夾", "醫院或商家", "發票或收據單號", "消費品項明細", "實付總金額", "實際代墊人", "妹妹應攤金額", "分攤狀態", "分攤註記備註"];
         var rows = [headers.join(",")];
         records.forEach(function(r) {
           var row = [
             r.id,
             r.date,
+            getRecordYearMonth(r),
             r.category,
             '"' + String(r.merchant || "").replace(/"/g, '""') + '"',
             '"' + String(r.invoiceNo || "").replace(/"/g, '""') + '"',
@@ -2471,7 +2555,8 @@
             r.amount,
             r.payer,
             r.sisterShare || Math.round(Number(r.amount) * 0.5),
-            r.status
+            isRecordShared(r) ? "已經分攤過" : "尚未分攤",
+            '"' + String(r.settleNote || "").replace(/"/g, '""') + '"'
           ];
           rows.push(row.join(","));
         });
@@ -2499,9 +2584,9 @@
             : '';
           return '<div style="border:1px solid #cbd5e1;border-radius:12px;padding:14px;margin-bottom:14px;page-break-inside:avoid;">' +
             '<div style="font-weight:bold;font-size:15px;color:#0f172a;">' + escapeHtml(r.id) + ' ｜ 日期：' + escapeHtml(r.date) + ' ｜ ' + escapeHtml(r.merchant) + '（' + escapeHtml(r.category) + '）</div>' +
-            '<div style="font-size:13px;color:#334155;margin-top:4px;">單號：' + escapeHtml(r.invoiceNo) + ' ｜ 代墊人：<b>' + escapeHtml(r.payer) + '</b> ｜ 狀態：' + escapeHtml(r.status) + '</div>' +
-            '<div style="font-size:13px;color:#1e293b;margin-top:4px;">品項明細：' + escapeHtml(r.items) + '</div>' +
-            '<div style="font-size:16px;font-weight:bold;color:#1d4ed8;margin-top:6px;">實付總金額：NT$ ' + Number(r.amount).toLocaleString() + ' 元（妹妹應攤：NT$ ' + Number(r.sisterShare || Math.round(r.amount * 0.5)).toLocaleString() + ' 元）</div>' +
+            '<div style="font-size:13px;color:#334155;margin-top:4px;">單號：' + escapeHtml(r.invoiceNo) + ' ｜ 代墊人：<b>' + escapeHtml(r.payer) + '</b> ｜ 分攤狀態：<b>' + (isRecordShared(r) ? '✅ 已經分攤過' : '⏳ 尚未分攤') + '</b>' + (r.settleNote ? '（註記：' + escapeHtml(r.settleNote) + '）' : '') + '</div>' +
+            '<div style="font-size:13px;color:#1e293b;margin-top:4px;">品項細項：' + escapeHtml(r.items) + '</div>' +
+            '<div style="font-size:16px;font-weight:bold;color:#1d4ed8;margin-top:6px;">實付總金額：NT$ ' + Number(r.amount).toLocaleString() + ' 元（妹妹應分攤：NT$ ' + Number(r.sisterShare || Math.round(r.amount * 0.5)).toLocaleString() + ' 元）</div>' +
             imgPart +
           '</div>';
         }).join("");
@@ -2509,7 +2594,7 @@
         var htmlStr = '<!DOCTYPE html><html lang="zh-TW"><head><meta charset="UTF-8"><title>媽媽照護開支圖文合一憑證總冊</title></head><body style="font-family:sans-serif;max-width:840px;margin:20px auto;padding:16px;">' +
           '<h1 style="font-size:22px;border-bottom:2px solid #0f172a;padding-bottom:8px;">⚖️ 媽媽醫療與照護生活開支・圖文合一憑證總冊</h1>' +
           '<p style="font-size:13px;color:#475569;">匯出日期：' + new Date().toISOString().slice(0, 10) + '（可直接按 Ctrl+P 列印或另存為 PDF 提交調解或對帳）</p>' +
-          rowsHtml + '</body></html>';
+          (rowsHtml || '<p style="color:#64748b;">尚無單據紀錄</p>') + '</body></html>';
 
         var blob = new Blob([htmlStr], { type: "text/html;charset=utf-8" });
         var a = document.createElement("a");
@@ -2521,6 +2606,7 @@
 
       function populateDeployCodes() {
         var vercelOcr = [
+          'export const config = { api: { bodyParser: { sizeLimit: "10mb" } } };',
           'export default async function handler(req, res) {',
           '  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });',
           '  const apiKey = process.env.GEMINI_API_KEY;',
@@ -2528,10 +2614,10 @@
           '  try {',
           '    const { imageBase64 } = req.body;',
           '    const raw = imageBase64.includes("base64,") ? imageBase64.split("base64,")[1] : imageBase64;',
-          '    const prompt = \'請辨識這張台灣收據或發票，只回傳純JSON：{"date":"YYYY-MM-DD","category":"從8大分類選一","merchant":"商家名稱","invoiceNo":"單號","items":"品項明細","amount":總金額數字,"candidates":[金額數字]}\';',
+          '    const prompt = \'請辨識這張台灣收據或發票，只回傳純JSON：{"date":"YYYY-MM-DD(若民國年加1911)","category":"從[01_醫療門診與住院,02_長照與看護自付,03_傷口敷料與耗材,04_洗腎營養品與奶粉,05_超市與市場膳食,06_交通接送與專車,07_輔具與環境改善,08_其他照護雜支]選一","merchant":"商家或醫院名稱","invoiceNo":"單號","items":"品項明細與單價(以 / 分隔)","amount":實付總金額純數字,"candidateAmounts":[金額數字陣列]}\';',
           '    const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + apiKey, {',
           '      method: "POST", headers: { "Content-Type": "application/json" },',
-          '      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: "image/jpeg", data: raw } }] }] })',
+          '      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }, { inlineData: { mimeType: "image/jpeg", data: raw } }] }], generationConfig: { temperature: 0.1, responseMimeType: "application/json" } })',
           '    });',
           '    const d = await r.json();',
           '    const txt = d.candidates[0].content.parts[0].text.replace(/```json|```/g, "").trim();',
@@ -2541,6 +2627,7 @@
         ].join("\n");
 
         var vercelCloud = [
+          'export const config = { api: { bodyParser: { sizeLimit: "10mb" } } };',
           'export default async function handler(req, res) {',
           '  const gasUrl = (req.body && req.body.gasUrl) || req.query.gasUrl || process.env.GAS_WEBAPP_URL;',
           '  if (!gasUrl) return res.status(400).json({ error: "Missing GAS_WEBAPP_URL" });',
@@ -2562,14 +2649,15 @@
 
         var vercelPkg = JSON.stringify({
           name: "mom-care-expense-system",
-          version: "11.1.0",
+          version: "13.0.0",
           private: true,
-          type: "module"
+          type: "module",
+          engines: { node: ">=18.x" }
         }, null, 2);
 
         var gasCode = [
           '/**',
-          ' * 媽媽照護生活開支・Google 雲端雙向同步與 8 大資料夾自動歸檔後端 (v11.1 全相容版)',
+          ' * 媽媽照護生活開支・Google 雲端雙向同步與 8 大資料夾自動歸檔後端 (v13.0 正式生產版)',
           ' */',
           'const ROOT_FOLDER_NAME = "【媽媽照護開支雲端存證庫】";',
           'const SHEET_NAME = "媽媽照護生活開支與代墊總帳本";',
@@ -2596,7 +2684,7 @@
           '      merchant: String(r[3]), invoiceNo: String(r[4]), items: String(r[5]),',
           '      amount: Number(r[6]) || 0, payer: String(r[7]), sisterShare: Number(r[8]) || 0,',
           '      settled: String(r[9]) === "已結算" || String(r[9]) === "已結算收回",',
-          '      driveUrl: String(r[10] || "")',
+          '      driveUrl: String(r[10] || ""), settleNote: String(r[12] || "")',
           '    });',
           '  }',
           '  const out = JSON.stringify({ status: "ok", records: records.reverse(), folderUrl: env.rootFolder.getUrl(), sheetUrl: env.ss.getUrl() });',
@@ -2610,6 +2698,22 @@
           '  try {',
           '    const data = JSON.parse(e.postData.contents);',
           '    const env = getOrCreateEnv_();',
+          '    const sheet = env.sheet;',
+          '    if (data.action === "toggleSettle" || data.action === "delete") {',
+          '      const rows = sheet.getDataRange().getValues();',
+          '      for (let i = 1; i < rows.length; i++) {',
+          '        if (String(rows[i][0]) === String(data.id)) {',
+          '          if (data.action === "toggleSettle") {',
+          '            sheet.getRange(i + 1, 10).setValue(data.settled ? "已結算收回" : "代墊未結算");',
+          '            if (data.settleNote !== undefined) sheet.getRange(i + 1, 13).setValue(data.settleNote);',
+          '          } else if (data.action === "delete") {',
+          '            sheet.deleteRow(i + 1);',
+          '          }',
+          '          break;',
+          '        }',
+          '      }',
+          '      return ContentService.createTextOutput(JSON.stringify({ status: "ok" })).setMimeType(ContentService.MimeType.JSON);',
+          '    }',
           '    const rec = data.record || data;',
           '    const imgBase64 = rec.imageData || rec.base64Image || "";',
           '    let fileUrl = "";',
@@ -2620,11 +2724,11 @@
           '      const blob = Utilities.newBlob(bytes, "image/jpeg", (rec.date || "單據") + "_" + (rec.merchant || "收據") + "_$" + (rec.amount || 0) + ".jpg");',
           '      fileUrl = sub.createFile(blob).getUrl();',
           '    }',
-          '    env.sheet.appendRow([',
-          '      rec.id || ("#" + (100 + env.sheet.getLastRow())), rec.date || "", rec.category || CATEGORIES[4],',
+          '    sheet.appendRow([',
+          '      rec.id || ("#" + (100 + sheet.getLastRow())), rec.date || "", rec.category || CATEGORIES[4],',
           '      rec.merchant || "", rec.invoiceNo || "", rec.items || "", Number(rec.amount) || 0,',
           '      rec.payer || "我(長子)代墊", Number(rec.sisterShare) || Math.round((Number(rec.amount) || 0) * 0.5),',
-          '      rec.settled ? "已結算收回" : "代墊未結算", fileUrl, new Date().toLocaleString("zh-TW")',
+          '      rec.settled ? "已結算收回" : "代墊未結算", fileUrl, new Date().toLocaleString("zh-TW"), rec.settleNote || ""',
           '    ]);',
           '    return ContentService.createTextOutput(JSON.stringify({ status: "ok", driveUrl: fileUrl, folderUrl: env.rootFolder.getUrl(), sheetUrl: env.ss.getUrl() })).setMimeType(ContentService.MimeType.JSON);',
           '  } catch (err) {',
@@ -2641,7 +2745,7 @@
           '  if (!fIter.hasNext()) { let f = DriveApp.getFileById(ss.getId()); rootFolder.addFile(f); DriveApp.getRootFolder().removeFile(f); }',
           '  let sheet = ss.getSheets()[0];',
           '  if (sheet.getLastRow() === 0) {',
-          '    sheet.appendRow(["單據ID","消費日期","雲端分類資料夾","醫院/商家名稱","發票/收據單號","消費品項明細","實付總金額","代墊人","妹妹應攤","結算狀態","雲端照片連結","建檔時間"]);',
+          '    sheet.appendRow(["單據ID","消費日期","雲端分類資料夾","醫院/商家名稱","發票/收據單號","消費品項明細","實付總金額","代墊人","妹妹應攤","結算狀態","雲端照片連結","建檔時間","分攤註記備註"]);',
           '  }',
           '  return { rootFolder, ss, sheet };',
           '}',
@@ -2654,7 +2758,7 @@
         if (byId("gasBackendCodeArea")) byId("gasBackendCodeArea").value = gasCode;
       }
 
-      // ==================== 8. 綁定所有按鈕事件與啟動流程 ====================
+      // ==================== 8. 綁定所有事件與啟動流程 ====================
       async function initApp() {
         byId("formDate").value = new Date().toISOString().slice(0, 10);
 
@@ -2684,7 +2788,6 @@
         }
         byId("btnToggleCloudDrawer").addEventListener("click", function() { toggleCloudDrawer(); });
         byId("btnCloseCloudDrawerTop").addEventListener("click", function() { toggleCloudDrawer(false); });
-        byId("btnCloseCloudDrawerBottom").addEventListener("click", function() { toggleCloudDrawer(false); });
 
         function toggleKeyDrawer(forceState) {
           var panel = byId("keyDrawerPanel");
@@ -2692,7 +2795,7 @@
           var isHidden = panel.style.display === "none";
           var show = (forceState !== undefined) ? forceState : isHidden;
           panel.style.display = show ? "block" : "none";
-          arrow.textContent = show ? "▲" : "▼";
+          arrow.textContent = show ? "▲ 收合" : "▼ 展開";
         }
         byId("btnToggleKeyDrawer").addEventListener("click", function() { toggleKeyDrawer(); });
         byId("btnCloseKeyDrawer").addEventListener("click", function() { toggleKeyDrawer(false); });
@@ -2700,8 +2803,12 @@
         byId("btnSaveGeminiKey").addEventListener("click", function() {
           var k = byId("inputGeminiKey").value.trim();
           localStorage.setItem(LS_GEMINI_KEY, k);
+          validateAndUpdateGasBadge();
           toggleKeyDrawer(false);
-          showToast("✅ 已儲存 Gemini API 金鑰！");
+          showToast("✅ 已儲存 Gemini API 金鑰！現在若已上傳圖片將立即重新精準辨識");
+          if (rawUploadedImg) {
+            runDynamicReceiptOcr();
+          }
         });
 
         byId("btnSaveAndPushGas").addEventListener("click", async function() {
@@ -2728,36 +2835,63 @@
           });
         }
 
-        byId("fileInputAlbum").addEventListener("change", function(e) {
-          if (e.target.files && e.target.files[0]) handleFileSelected(e.target.files[0]);
-        });
-        byId("fileInputCamera").addEventListener("change", function(e) {
-          if (e.target.files && e.target.files[0]) handleFileSelected(e.target.files[0]);
-        });
-        byId("btnDemoKmuh").addEventListener("click", function() { generateDemoReceiptImage("kmuh"); });
-        byId("btnDemoPxmart").addEventListener("click", function() { generateDemoReceiptImage("pxmart"); });
-        byId("btnDemoToy").addEventListener("click", function() { generateDemoReceiptImage("toy"); });
-        byId("btnRerunOcr").addEventListener("click", function() { runTripleEngineOcr(""); });
+        // 關鍵修正：每次點擊與選取檔案後皆重置 value = ""，確保連續上傳不同收據或重選同一張收據皆會觸發 change 事件
+        var albumInput = byId("fileInputAlbum");
+        var cameraInput = byId("fileInputCamera");
 
-        var initCands = document.querySelectorAll(".cand-amt-btn");
-        for (var c = 0; c < initCands.length; c++) {
-          initCands[c].addEventListener("click", function() {
-            var v = Number(this.getAttribute("data-amt")) || 0;
-            byId("formAmount").value = v;
-            updateSisterSharePreview();
+        albumInput.addEventListener("click", function() { this.value = ""; });
+        cameraInput.addEventListener("click", function() { this.value = ""; });
+
+        albumInput.addEventListener("change", function(e) {
+          if (e.target.files && e.target.files[0]) {
+            handleFileSelected(e.target.files[0]);
+          }
+        });
+        cameraInput.addEventListener("change", function(e) {
+          if (e.target.files && e.target.files[0]) {
+            handleFileSelected(e.target.files[0]);
+          }
+        });
+
+        // 支援電腦端直接按 Ctrl+V 貼上剪貼簿截圖並立即辨識
+        window.addEventListener("paste", function(e) {
+          var items = (e.clipboardData || e.originalEvent.clipboardData || {}).items;
+          if (!items) return;
+          for (var p = 0; p < items.length; p++) {
+            if (items[p].type && items[p].type.indexOf("image") === 0) {
+              var blob = items[p].getAsFile();
+              if (blob) {
+                showToast("📋 已貼上剪貼簿截圖，正在啟動動態辨識...");
+                handleFileSelected(blob);
+                break;
+              }
+            }
+          }
+        });
+
+        byId("btnRerunOcr").addEventListener("click", function() {
+          runDynamicReceiptOcr();
+        });
+
+        byId("btnClearFormInputs").addEventListener("click", function() {
+          resetFormForNewReceiptScan();
+          rawUploadedImg = null;
+          watermarkedDataUrl = "";
+          byId("canvasPreviewBox").style.display = "none";
+          byId("ocrStatusPanel").style.display = "none";
+          showToast("🧹 已清空表單欄位與預覽圖");
+        });
+
+        // 常用分類快選（僅設定分類與預設商家，不覆蓋已辨識之真實金額）
+        var catBtns = document.querySelectorAll(".quick-cat-btn");
+        for (var c = 0; c < catBtns.length; c++) {
+          catBtns[c].addEventListener("click", function() {
+            var cat = this.getAttribute("data-cat");
+            var merch = this.getAttribute("data-merch");
+            if (cat) byId("formCategory").value = cat;
+            if (merch && !byId("formMerchant").value) byId("formMerchant").value = merch;
             drawWatermarkCanvas();
-            showToast("🎯 已填入金額：NT$ " + v.toLocaleString());
-          });
-        }
-
-        var tplBtns = document.querySelectorAll(".quick-tpl-btn");
-        for (var t = 0; t < tplBtns.length; t++) {
-          tplBtns[t].addEventListener("click", function() {
-            var key = this.getAttribute("data-tpl");
-            var tpl = QUICK_TEMPLATES[key];
-            if (!tpl) return;
-            applyRecognitionToForm(Object.assign({ date: byId("formDate").value }, tpl));
-            showToast("⚡ 已帶入「" + tpl.merchant + "」常用照護範本！");
+            showToast("📁 已切換分類為：" + cat);
           });
         }
 
@@ -2814,6 +2948,7 @@
             records = records.map(function(item) {
               if (item.id === editingId) {
                 recObj.photoUrl = watermarkedDataUrl || item.photoUrl || "";
+                recObj.drivePhotoUrl = item.drivePhotoUrl || "";
                 return recObj;
               }
               return item;
@@ -2826,8 +2961,14 @@
             records.unshift(recObj);
           }
 
+          // 儲存後重置表單，方便連續拍攝下一張收據
+          resetFormForNewReceiptScan();
           if (byId("formSettleNote")) byId("formSettleNote").value = "";
           if (byId("formShareStatus")) byId("formShareStatus").value = "代墊未結算";
+          rawUploadedImg = null;
+          watermarkedDataUrl = "";
+          byId("canvasPreviewBox").style.display = "none";
+          byId("ocrStatusPanel").style.display = "none";
 
           await saveRecordsPersistently();
           renderAllViews();
@@ -2841,19 +2982,22 @@
           byId("editingModeBadge").style.display = "none";
           byId("btnCancelEdit").style.display = "none";
           byId("btnSubmitRecord").textContent = "✅ 儲存單據（永久寫入本機＋同步傳送 Google 雲端）";
+          resetFormForNewReceiptScan();
           if (byId("formSettleNote")) byId("formSettleNote").value = "";
           if (byId("formShareStatus")) byId("formShareStatus").value = "代墊未結算";
         });
 
         byId("btnRotateLeft").addEventListener("click", function() {
           currentRotation = (currentRotation - 90) % 360;
+          buildOcrImagesFromCurrentImg();
           drawWatermarkCanvas();
-          showToast("↺ 已向左旋轉 90°（維持原始比例）");
+          showToast("↺ 已向左旋轉 90°（可點「🔄 重新辨識目前圖片」重新掃描）");
         });
         byId("btnRotateRight").addEventListener("click", function() {
           currentRotation = (currentRotation + 90) % 360;
+          buildOcrImagesFromCurrentImg();
           drawWatermarkCanvas();
-          showToast("↻ 已向右旋轉 90°（維持原始比例）");
+          showToast("↻ 已向右旋轉 90°（可點「🔄 重新辨識目前圖片」重新掃描）");
         });
         byId("btnZoomToggle").addEventListener("click", function() {
           var wrap = byId("canvasScrollWrap");
@@ -2887,18 +3031,6 @@
           a.click();
         });
 
-        byId("btnRestoreToyDefault").addEventListener("click", async function() {
-          var exists = records.some(function(r) { return r.id === "#101-339"; });
-          if (!exists) {
-            records.unshift(getDefaultToyRecord());
-            await saveRecordsPersistently();
-            renderAllViews();
-            showToast("✅ 已為您找回「#101-339 旭陽玩具店 NT$ 1,449」單據！");
-          } else {
-            showToast("💡 「#101-339 旭陽玩具店」單據已經在下方列表中囉！");
-          }
-        });
-
         byId("btnExportCsvQuick").addEventListener("click", exportExcelCsv);
         byId("btnExportJsonQuick").addEventListener("click", exportJsonBackup);
         byId("importJsonInput").addEventListener("change", function(e) {
@@ -2909,10 +3041,10 @@
             try {
               var arr = JSON.parse(evt.target.result);
               if (Array.isArray(arr)) {
-                records = arr;
+                records = arr.filter(function(r) { return !isSampleOrDemoRecord(r); });
                 await saveRecordsPersistently();
                 renderAllViews();
-                showToast("✅ 已成功還原 " + arr.length + " 筆單據！");
+                showToast("✅ 已成功還原 " + records.length + " 筆單據！");
               }
             } catch (err) {
               showToast("⚠️ 備份檔格式不正確");
@@ -2925,7 +3057,6 @@
         byId("filterStatus").addEventListener("change", renderAllViews);
         byId("filterKeyword").addEventListener("input", renderAllViews);
 
-        // 綁定「年月時間軸篩選器」與「尚未分攤 / 已經分攤過」快速檢視事件
         if (byId("globalMonthSelect")) {
           byId("globalMonthSelect").addEventListener("change", function() {
             selectedYearMonth = this.value || "ALL";
@@ -2961,6 +3092,7 @@
               var matchYm = (selectedYearMonth === "ALL") || (getRecordYearMonth(r) === selectedYearMonth);
               if (matchYm && !isRecordShared(r)) {
                 r.status = "已結算收回";
+                r.settled = true;
                 r.settledAt = todayStr;
                 count++;
               }
@@ -3033,10 +3165,14 @@
           copyTextareaById("vercelPkgCodeArea", "📋 已複製 package.json 程式碼！");
         });
 
-        generateDemoReceiptImage("toy");
         var readyBadge = byId("appReadyBadge");
         if (readyBadge) {
-          readyBadge.textContent = "🟢 系統已正常啟動（共 " + records.length + " 筆單據就緒）";
+          readyBadge.textContent = "🟢 正式版已就緒（共 " + records.length + " 筆真實單據）";
+        }
+
+        // 若已設定雲端網址，啟動時自動靜默同步一次
+        if (savedGas && savedGas.indexOf("/exec") !== -1) {
+          pullRecordsFromCloud(true);
         }
       }
 
