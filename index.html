@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>媽媽照護開支・代墊與雲端存證系統 (v13.0 正式生產版)</title>
+  <title>媽媽照護開支・代墊與雲端存證系統 (v14.0 正式生產版)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- 內建免費光學辨識引擎 Tesseract.js (作為無金鑰時之真實動態影像掃描備援) -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -60,19 +60,22 @@
         <div>
           <div class="flex items-center gap-2 flex-wrap">
             <h1 class="text-base md:text-lg font-extrabold tracking-tight">媽媽照護開支・代墊與雲端存證系統</h1>
-            <span class="bg-emerald-400 text-slate-950 text-[11px] font-black px-2 py-0.5 rounded-full">v13.0 正式生產版</span>
+            <span class="bg-emerald-400 text-slate-950 text-[11px] font-black px-2 py-0.5 rounded-full">v14.0 防重複自動同步版</span>
             <span id="appReadyBadge" class="bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 text-[11px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1">
               🟢 系統已就緒
             </span>
           </div>
-          <p class="text-[11px] text-slate-300">多引擎動態單據辨識・依年月與分攤狀態管理・本機永久保存＋Google 雲端雙向同步</p>
+          <p class="text-[11px] text-slate-300">自動修復英文長日期・跨平台開啟自動載入雲端・修正單據自動覆蓋試算表舊檔不重複累積</p>
         </div>
       </div>
 
       <!-- 頂部快捷動作按鈕組 -->
       <div class="flex flex-wrap items-center gap-1.5">
-        <button type="button" id="btnPushAllCloud" class="bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-extrabold px-3 py-1.5 rounded-xl shadow flex items-center gap-1 transition">
-          ☁️ 一鍵補傳本機單據至雲端
+        <button type="button" id="btnPushAllCloud" class="bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-extrabold px-3 py-1.5 rounded-xl shadow flex items-center gap-1 transition" title="僅補傳尚未同步之單據，已同步單據不會重複新增">
+          ☁️ 補傳未同步單據
+        </button>
+        <button type="button" id="btnCleanCloudDuplicates" class="bg-rose-500 hover:bg-rose-400 text-white text-xs font-extrabold px-2.5 py-1.5 rounded-xl shadow flex items-center gap-1 transition" title="自動合併試算表中重複累積的舊紀錄並修復日期格式">
+          🧹 清理雲端重複與修復日期
         </button>
         <button type="button" id="btnPullCloud" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-2.5 py-1.5 rounded-xl shadow flex items-center gap-1 transition">
           🔄 從雲端載入
@@ -127,10 +130,13 @@
           <button type="button" id="btnTestGasConn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-3.5 py-2 rounded-xl shadow shrink-0">
             🔄 測試連線並載入
           </button>
+          <button type="button" id="btnCopyCrossPlatformLink" class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black px-3.5 py-2 rounded-xl shadow shrink-0" title="產生帶有雲端連線參數的專屬網址，在任何新手機或新電腦打開即自動載入雲端帳目">
+            📱 複製跨平台免設定連結
+          </button>
         </div>
 
         <div id="gasUrlCheckHint" class="bg-slate-800/90 border border-slate-700 rounded-xl p-2.5 text-[11px] text-slate-300 leading-relaxed">
-          💡 請確認貼上的網址結尾包含 <code class="text-amber-300 font-bold">/exec</code>，且在 Google Apps Script 部署時將存取權限設為「<b>所有人 (Anyone)</b>」。
+          💡 <b>跨平台自動載入說明</b>：系統每次開啟時皆會<b>自動從 Vercel <code class="text-emerald-300">/api/cloud</code> 或已綁定網址載入雲端資料</b>。若您在不同手機/電腦開啟，也可點選上方「<b>📱 複製跨平台免設定連結</b>」書籤儲存，打開即自動連線並載入所有雲端單據！
         </div>
       </div>
 
@@ -830,10 +836,106 @@
         });
       }
 
+      // 萬用日期正規化函式：徹底解決 Google 試算表回傳 "Mon May 11 2026 00:00:00 GMT+0800..." 或 "2026/11/03" 導致顯示「未標註年月」的問題
+      function normalizeDateString(val) {
+        if (!val) return "";
+        var s = String(val).trim();
+        if (!s) return "";
+
+        // 1. 已是標準 YYYY-MM-DD
+        var isoLeading = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+        if (isoLeading) {
+          return isoLeading[1] + "-" + String(isoLeading[2]).padStart(2, "0") + "-" + String(isoLeading[3]).padStart(2, "0");
+        }
+
+        // 2. 支援 YYYY/MM/DD、YYYY.MM.DD 或 YYYY年MM月DD日
+        var slashMatch = s.match(/^(\d{4})[\/\.\年](\d{1,2})[\/\.\月](\d{1,2})/);
+        if (slashMatch) {
+          return slashMatch[1] + "-" + String(slashMatch[2]).padStart(2, "0") + "-" + String(slashMatch[3]).padStart(2, "0");
+        }
+
+        // 3. 支援民國年 110~125/MM/DD
+        var rocMatch = s.match(/^(1[12]\d)[\/\.\-年](\d{1,2})[\/\.\-月](\d{1,2})/);
+        if (rocMatch) {
+          var westYr = parseInt(rocMatch[1], 10) + 1911;
+          return westYr + "-" + String(rocMatch[2]).padStart(2, "0") + "-" + String(rocMatch[3]).padStart(2, "0");
+        }
+
+        // 4. 針對 Google 試算表轉出之英文長日期字串 (如 "Mon May 11 2026 00:00:00 GMT+0800 (Taiwan Standard Time)") 或 ISO 時間字串
+        var parsedDate = new Date(s);
+        if (!isNaN(parsedDate.getTime())) {
+          // 以台灣時區 (+8) 計算正確年月日，避免 UTC 時差少一天
+          var twTime = new Date(parsedDate.getTime() + (8 * 60 + parsedDate.getTimezoneOffset()) * 60000);
+          var yr = twTime.getFullYear();
+          var mo = String(twTime.getMonth() + 1).padStart(2, "0");
+          var da = String(twTime.getDate()).padStart(2, "0");
+          if (yr >= 2000 && yr <= 2099) {
+            return yr + "-" + mo + "-" + da;
+          }
+        }
+
+        // 5. 從字串任意位置抓取 YYYY-MM-DD 或 YYYY/MM/DD
+        var anyDate = s.match(/(20\d{2})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+        if (anyDate) {
+          return anyDate[1] + "-" + String(anyDate[2]).padStart(2, "0") + "-" + String(anyDate[3]).padStart(2, "0");
+        }
+
+        return s;
+      }
+
       function getRecordYearMonth(r) {
-        var d = String((r && r.date) || "").trim();
-        if (/^\d{4}-\d{2}/.test(d)) return d.slice(0, 7);
+        if (!r) return "未標註年月";
+        var normalized = normalizeDateString(r.date);
+        if (normalized && normalized !== r.date) {
+          r.date = normalized;
+        }
+        if (/^\d{4}-\d{2}/.test(normalized)) {
+          return normalized.slice(0, 7);
+        }
         return "未標註年月";
+      }
+
+      // 自動去重與正規化：確保同 ID 或重複儲存的單據自動合併覆蓋，並依日期由新到舊排序
+      function deduplicateAndNormalizeRecords(list) {
+        if (!Array.isArray(list)) return [];
+        var idMap = {};
+        var orderedIds = [];
+
+        list.forEach(function(item) {
+          if (!item || isSampleOrDemoRecord(item)) return;
+          var cleanId = String(item.id || "").trim();
+          if (!cleanId) return;
+
+          var normDate = normalizeDateString(item.date);
+          var normalizedItem = Object.assign({}, item, {
+            id: cleanId,
+            date: normDate || new Date().toISOString().slice(0, 10),
+            amount: Number(item.amount) || 0,
+            sisterShare: item.sisterShare !== undefined ? Number(item.sisterShare) : Math.round((Number(item.amount) || 0) * 0.5)
+          });
+
+          if (!idMap[cleanId]) {
+            idMap[cleanId] = normalizedItem;
+            orderedIds.push(cleanId);
+          } else {
+            // 若已有相同 ID，以最新欄位覆蓋，並保留既有之本機防偽照片與雲端連結
+            var prev = idMap[cleanId];
+            idMap[cleanId] = Object.assign({}, prev, normalizedItem, {
+              photoUrl: normalizedItem.photoUrl || prev.photoUrl || "",
+              drivePhotoUrl: normalizedItem.drivePhotoUrl || prev.drivePhotoUrl || "",
+              cloudSynced: Boolean(normalizedItem.cloudSynced || prev.cloudSynced)
+            });
+          }
+        });
+
+        var result = orderedIds.map(function(id) { return idMap[id]; });
+        result.sort(function(a, b) {
+          var da = String(a.date || "");
+          var db = String(b.date || "");
+          if (da !== db) return db.localeCompare(da);
+          return String(b.id || "").localeCompare(String(a.id || ""));
+        });
+        return result;
       }
 
       function isRecordShared(r) {
@@ -926,9 +1028,9 @@
           }
         }
 
-        // 自動清除所有範例/舉例資料，只保留使用者真實建立的單據
+        // 自動清除所有範例/舉例資料，並將所有歷史單據之日期正規化與去重
         if (Array.isArray(loaded)) {
-          records = loaded.filter(function(r) { return !isSampleOrDemoRecord(r); });
+          records = deduplicateAndNormalizeRecords(loaded);
         } else {
           records = [];
         }
@@ -1155,8 +1257,9 @@
 
       function applyRecognitionToForm(res) {
         if (!res) return;
-        if (res.date && /^\d{4}-\d{2}-\d{2}$/.test(res.date)) {
-          byId("formDate").value = res.date;
+        var normRecognizedDate = normalizeDateString(res.date);
+        if (normRecognizedDate && /^\d{4}-\d{2}-\d{2}$/.test(normRecognizedDate)) {
+          byId("formDate").value = normRecognizedDate;
         }
         if (res.category && FOLDERS.indexOf(res.category) !== -1) {
           byId("formCategory").value = res.category;
@@ -1593,13 +1696,27 @@
         return true;
       }
 
-      async function pushSingleRecordToCloud(rec, silent) {
+      // 儲存或覆蓋更新單筆單據至雲端（支援 Upsert 覆蓋舊檔，避免試算表重複累積）
+      async function pushSingleRecordToCloud(rec, silent, isOverwriteExisting) {
         var gasUrl = normalizeGasUrl(byId("inputGasUrl").value || localStorage.getItem(LS_GAS_URL) || "");
-        if (!silent) showToast("☁️ 正在將單據 " + rec.id + " 同步至 Google 雲端...");
+        rec.date = normalizeDateString(rec.date) || new Date().toISOString().slice(0, 10);
+
+        if (!silent) {
+          showToast("☁️ 正在將單據 " + rec.id + (isOverwriteExisting ? " 覆蓋更新" : " 同步") + "至 Google 雲端試算表...");
+        }
         var compressedImg = await compressForCloudUpload(rec.photoUrl || "");
 
+        // 若為修改既有單據或重新儲存，先發送 delete 清除舊版 GAS 試算表中的重複舊列（向後相容舊版 GAS 腳本）
+        if (isOverwriteExisting) {
+          try {
+            await syncCloudStatusOrDelete("delete", rec);
+          } catch (delErr) {}
+        }
+
         var payloadObj = {
-          action: "add",
+          action: "upsert",
+          mode: "upsert",
+          overwrite: true,
           gasUrl: gasUrl,
           id: rec.id,
           date: rec.date,
@@ -1613,6 +1730,7 @@
           settled: isRecordShared(rec),
           status: rec.status || "代墊未結算",
           settleNote: rec.settleNote || "",
+          driveUrl: rec.drivePhotoUrl || "",
           imageData: compressedImg,
           base64Image: compressedImg,
           record: {
@@ -1627,6 +1745,7 @@
             sisterShare: Number(rec.sisterShare) || Math.round((Number(rec.amount) || 0) * 0.5),
             settled: isRecordShared(rec),
             settleNote: rec.settleNote || "",
+            driveUrl: rec.drivePhotoUrl || "",
             imageData: compressedImg
           }
         };
@@ -1645,7 +1764,7 @@
               if (vJson.driveUrl) rec.drivePhotoUrl = vJson.driveUrl;
               await saveRecordsPersistently();
               renderAllViews();
-              if (!silent) showToast("✅ 已透過雲端代理寫入 Google 試算表與分類資料夾！");
+              if (!silent) showToast("✅ 已同步覆蓋更新至 Google 雲端試算表！");
               return true;
             }
           }
@@ -1684,7 +1803,7 @@
             }
             await saveRecordsPersistently();
             renderAllViews();
-            if (!silent) showToast("✅ 已成功寫入 Google 試算表與雲端分類資料夾！");
+            if (!silent) showToast("✅ 已成功更新至 Google 試算表與雲端分類資料夾！");
             return true;
           }
         } catch (corsErr) {
@@ -1698,7 +1817,7 @@
             rec.cloudSynced = true;
             await saveRecordsPersistently();
             renderAllViews();
-            if (!silent) showToast("☁️ 已送出單據至 Google 雲端！");
+            if (!silent) showToast("☁️ 已送出更新單據至 Google 雲端！");
             return true;
           } catch (err2) {
             if (!silent) showToast("⚠️ 雲端連線失敗，請檢查網址是否為完整 /exec 結尾");
@@ -1714,17 +1833,18 @@
           action: actionType,
           gasUrl: gasUrl,
           id: rec.id,
+          date: normalizeDateString(rec.date),
           settled: isRecordShared(rec),
           status: rec.status,
           settleNote: rec.settleNote || ""
         };
         try {
-          await fetch("/api/cloud", {
+          var vRes = await fetch("/api/cloud", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
           });
-          return;
+          if (vRes.ok) return;
         } catch (e) {}
         if (!gasUrl) return;
         try {
@@ -1737,6 +1857,7 @@
         } catch (e2) {}
       }
 
+      // 僅補傳尚未同步之單據（避免將已同步單據重複寫入試算表）
       async function pushAllUnsyncedRecords() {
         var gasUrl = normalizeGasUrl(byId("inputGasUrl").value || localStorage.getItem(LS_GAS_URL) || "");
         if (gasUrl) {
@@ -1744,26 +1865,76 @@
           validateAndUpdateGasBadge();
         }
 
-        if (records.length === 0) {
-          showToast("目前尚無單據需要上傳");
+        records = deduplicateAndNormalizeRecords(records);
+
+        var unsyncedList = records.filter(function(r) { return !r.cloudSynced; });
+        if (unsyncedList.length === 0) {
+          // 若本機皆已標記同步，則自動改為從雲端拉取最新資料確保雙向一致
+          await pullRecordsFromCloud(false);
+          showToast("✅ 所有本機單據皆已同步雲端（無需重複上傳）！");
           return;
         }
 
-        showToast("☁️ 正在將本機 " + records.length + " 筆單據批次推送至 Google 雲端...");
+        showToast("☁️ 正在補傳 " + unsyncedList.length + " 筆尚未同步之單據至 Google 雲端...");
         var okCount = 0;
-        for (var i = 0; i < records.length; i++) {
-          var ok = await pushSingleRecordToCloud(records[i], true);
+        for (var i = 0; i < unsyncedList.length; i++) {
+          var ok = await pushSingleRecordToCloud(unsyncedList[i], true, true);
           if (ok) okCount++;
         }
         await saveRecordsPersistently();
         renderAllViews();
-        showToast("✅ 批次同步完成！已推送 " + okCount + " / " + records.length + " 筆單據至 Google 雲端！");
+        showToast("✅ 補傳完成！已同步 " + okCount + " 筆未上傳單據（不重複累積舊單據）！");
+      }
+
+      // 清理雲端試算表重複列與修復舊格式英文長日期
+      async function cleanCloudDuplicatesAndFixDates() {
+        showToast("🧹 正在掃描並清理雲端重複單據與修復日期格式...");
+        await pullRecordsFromCloud(true);
+
+        // 依「日期 + 商家 + 金額 + 品項」進一步合併過去因重複點擊而產生不同單號的完全相同單據
+        var sigMap = {};
+        var duplicateIdsToDelete = [];
+        var uniqueRecords = [];
+
+        records.forEach(function(r) {
+          r.date = normalizeDateString(r.date) || new Date().toISOString().slice(0, 10);
+          var sig = [r.date, cleanText(r.merchant), Number(r.amount) || 0, cleanText(r.items)].join("|");
+          if (!sigMap[sig]) {
+            sigMap[sig] = r;
+            uniqueRecords.push(r);
+          } else {
+            // 若發現內容一模一樣的重複單據，保留較完整的一筆並刪除多餘 ID
+            var kept = sigMap[sig];
+            if (!kept.photoUrl && r.photoUrl) kept.photoUrl = r.photoUrl;
+            if (!kept.drivePhotoUrl && r.drivePhotoUrl) kept.drivePhotoUrl = r.drivePhotoUrl;
+            if (r.id !== kept.id) {
+              duplicateIdsToDelete.push(r);
+            }
+          }
+        });
+
+        records = deduplicateAndNormalizeRecords(uniqueRecords);
+        await saveRecordsPersistently();
+        renderAllViews();
+
+        // 刪除雲端上多餘的重複 ID
+        for (var d = 0; d < duplicateIdsToDelete.length; d++) {
+          await syncCloudStatusOrDelete("delete", duplicateIdsToDelete[d]);
+        }
+
+        // 將整理後的唯一單據覆蓋寫回雲端（先刪後寫，確保舊版 GAS 試算表也被清理乾淨）
+        for (var u = 0; u < records.length; u++) {
+          await pushSingleRecordToCloud(records[u], true, true);
+        }
+
+        showToast("✅ 已完成雲端試算表去重與日期修復（目前共 " + records.length + " 筆乾淨單據）！");
       }
 
       async function pullRecordsFromCloud(silent) {
         var gasUrl = normalizeGasUrl(byId("inputGasUrl").value || localStorage.getItem(LS_GAS_URL) || "");
-        if (!silent) showToast("🔄 正在從 Google 雲端試算表讀取歷史帳目...");
+        if (!silent) showToast("🔄 正在從 Google 雲端試算表載入最新帳目...");
 
+        // 1. 無論本機有無設定網址，皆優先呼叫 Vercel /api/cloud（支援換電腦/換手機打開自動載入）
         try {
           var vUrl = "/api/cloud" + (gasUrl ? ("?gasUrl=" + encodeURIComponent(gasUrl)) : "");
           var vResp = await fetch(vUrl, { method: "GET" });
@@ -1771,8 +1942,13 @@
             var vData = await vResp.json();
             if (vData && Array.isArray(vData.records)) {
               await mergeCloudRecords(vData);
-              if (!silent) showToast("✅ 已同步雲端最新帳目！");
-              return;
+              var cBadge = byId("cloudStatusBadge");
+              if (cBadge) {
+                cBadge.className = "inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold";
+                cBadge.textContent = "🟢 雲端已自動同步（共 " + records.length + " 筆）";
+              }
+              if (!silent) showToast("✅ 已從雲端同步載入 " + records.length + " 筆帳目！");
+              return true;
             }
           }
         } catch (ve) {}
@@ -1780,9 +1956,9 @@
         if (!gasUrl) {
           if (!silent) {
             byId("cloudDrawerPanel").style.display = "block";
-            showToast("⚠️ 請先設定 Google Apps Script 網址");
+            showToast("⚠️ 請先貼上 Google Apps Script 網址，或於 Vercel 設定 GAS_WEBAPP_URL");
           }
-          return;
+          return false;
         }
 
         try {
@@ -1796,8 +1972,8 @@
           var data = await resp.json();
           if (data && Array.isArray(data.records)) {
             await mergeCloudRecords(data);
-            if (!silent) showToast("✅ 已從 Google 雲端同步載入最新帳目！");
-            return;
+            if (!silent) showToast("✅ 已從 Google 雲端同步載入 " + records.length + " 筆最新帳目！");
+            return true;
           }
         } catch (e) {
           var cbName = "gasJsonpCb_" + Date.now();
@@ -1807,7 +1983,7 @@
             if (script.parentNode) script.parentNode.removeChild(script);
             if (data && Array.isArray(data.records)) {
               await mergeCloudRecords(data);
-              if (!silent) showToast("✅ 已從 Google 雲端載入帳目！");
+              if (!silent) showToast("✅ 已從 Google 雲端載入 " + records.length + " 筆帳目！");
             }
           };
           script.onerror = function() {
@@ -1818,6 +1994,7 @@
           script.src = gasUrl + (gasUrl.indexOf("?") === -1 ? "?callback=" : "&callback=") + cbName;
           document.body.appendChild(script);
         }
+        return false;
       }
 
       async function mergeCloudRecords(data) {
@@ -1836,15 +2013,30 @@
           if (!isSampleOrDemoRecord(r)) localMap[r.id] = r;
         });
 
+        var hadRawDateInCloud = false;
+
+        // data.records 在 GAS doGet 中是 reverse() (最新在最前)，因此若同 ID 出現多次，第一筆是試算表最底部的最新列
+        var seenCloudIds = {};
         data.records.forEach(function(cr) {
           if (isSampleOrDemoRecord(cr)) return;
-          var cid = String(cr.id || "");
+          var cid = String(cr.id || "").trim();
           if (!cid) return;
+
+          // 若雲端試算表因舊版重複累積了相同 ID，只取最新的一列，忽略舊列
+          if (seenCloudIds[cid]) return;
+          seenCloudIds[cid] = true;
+
+          var rawCloudDate = String(cr.date || "");
+          var cleanDate = normalizeDateString(rawCloudDate);
+          if (rawCloudDate && rawCloudDate !== cleanDate) {
+            hadRawDateInCloud = true;
+          }
+
           var existing = localMap[cid];
           var isSettled = Boolean(cr.settled || cr.status === "已結算收回" || cr.status === "已結算");
           localMap[cid] = {
             id: cid,
-            date: cr.date || (existing ? existing.date : ""),
+            date: cleanDate || (existing ? normalizeDateString(existing.date) : new Date().toISOString().slice(0, 10)),
             payer: cr.payer || (existing ? existing.payer : "我(長子)代墊"),
             category: cr.category || (existing ? existing.category : "08_其他照護雜支"),
             merchant: cr.merchant || (existing ? existing.merchant : ""),
@@ -1863,9 +2055,14 @@
           };
         });
 
-        records = Object.keys(localMap).map(function(k) { return localMap[k]; });
+        records = deduplicateAndNormalizeRecords(Object.keys(localMap).map(function(k) { return localMap[k]; }));
         await saveRecordsPersistently();
         renderAllViews();
+
+        var readyBadge = byId("appReadyBadge");
+        if (readyBadge) {
+          readyBadge.textContent = "🟢 雲端已同步（共 " + records.length + " 筆單據）";
+        }
       }
 
       // ==================== 6. 介面渲染引擎 ====================
@@ -2093,11 +2290,13 @@
 
         card.querySelector('[data-act="edit"]').addEventListener("click", function() {
           editingId = r.id;
+          var cleanEditDate = normalizeDateString(r.date) || new Date().toISOString().slice(0, 10);
+          r.date = cleanEditDate;
           byId("editingModeBadge").style.display = "inline-block";
-          byId("editingModeBadge").textContent = "✏️ 正在修正單據 " + r.id;
+          byId("editingModeBadge").textContent = "✏️ 正在修正單據 " + r.id + "（儲存時將直接覆蓋舊檔）";
           byId("btnCancelEdit").style.display = "inline-block";
-          byId("btnSubmitRecord").textContent = "💾 儲存修正內容（更新本機與雲端）";
-          byId("formDate").value = r.date;
+          byId("btnSubmitRecord").textContent = "💾 儲存修正內容（直接覆蓋本機與雲端舊紀錄，不重複新增）";
+          byId("formDate").value = cleanEditDate;
           byId("formPayer").value = r.payer;
           byId("formCategory").value = r.category;
           byId("formMerchant").value = r.merchant;
@@ -2116,7 +2315,7 @@
           updateSisterSharePreview();
           switchTab("tab-capture");
           window.scrollTo({ top: 180, behavior: "smooth" });
-          showToast("✏️ 已載入單據 " + r.id + " 至上方表單，修正後請按「💾 儲存修正內容」");
+          showToast("✏️ 已載入單據 " + r.id + "（日期：" + cleanEditDate + "），儲存後將直接覆蓋雲端舊紀錄！");
         });
 
         var dlBtn = card.querySelector('[data-act="dl"]');
@@ -2657,7 +2856,10 @@
 
         var gasCode = [
           '/**',
-          ' * 媽媽照護生活開支・Google 雲端雙向同步與 8 大資料夾自動歸檔後端 (v13.0 正式生產版)',
+          ' * 媽媽照護生活開支・Google 雲端雙向同步與 8 大資料夾自動歸檔後端 (v14.0 防重複覆蓋＋標準日期版)',
+          ' * 重大升級：',
+          ' * 1. 自動將試算表日期格式化為標準 YYYY-MM-DD，徹底解決英文長日期 (Mon May 11 2026...) 與未標註年月問題',
+          ' * 2. 儲存或修正單據時自動比對「單據ID」，若已存在則直接覆蓋更新原列 (Upsert)，絕不重複累積舊紀錄',
           ' */',
           'const ROOT_FOLDER_NAME = "【媽媽照護開支雲端存證庫】";',
           'const SHEET_NAME = "媽媽照護生活開支與代墊總帳本";',
@@ -2665,6 +2867,18 @@
           '  "01_醫療門診與住院", "02_長照與看護自付", "03_傷口敷料與耗材", "04_洗腎營養品與奶粉",',
           '  "05_超市與市場膳食", "06_交通接送與專車", "07_輔具與環境改善", "08_其他照護雜支"',
           '];',
+          '',
+          'function formatStdDate_(val) {',
+          '  if (!val) return "";',
+          '  if (Object.prototype.toString.call(val) === "[object Date]" && !isNaN(val.getTime())) {',
+          '    return Utilities.formatDate(val, "Asia/Taipei", "yyyy-MM-dd");',
+          '  }',
+          '  const s = String(val).trim();',
+          '  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(s)) return s;',
+          '  const d = new Date(s);',
+          '  if (!isNaN(d.getTime())) return Utilities.formatDate(d, "Asia/Taipei", "yyyy-MM-dd");',
+          '  return s;',
+          '}',
           '',
           'function setupCareCloudNow() {',
           '  const env = getOrCreateEnv_();',
@@ -2675,19 +2889,23 @@
           'function doGet(e) {',
           '  const env = getOrCreateEnv_();',
           '  const rows = env.sheet.getDataRange().getValues();',
-          '  const records = [];',
+          '  const recordsMap = {};',
+          '  const order = [];',
           '  for (let i = 1; i < rows.length; i++) {',
           '    const r = rows[i];',
-          '    if (!r[0]) continue;',
-          '    records.push({',
-          '      id: String(r[0]), date: String(r[1]), category: String(r[2]),',
-          '      merchant: String(r[3]), invoiceNo: String(r[4]), items: String(r[5]),',
-          '      amount: Number(r[6]) || 0, payer: String(r[7]), sisterShare: Number(r[8]) || 0,',
+          '    const id = String(r[0] || "").trim();',
+          '    if (!id) continue;',
+          '    if (!recordsMap[id]) order.push(id);',
+          '    recordsMap[id] = {',
+          '      id: id, date: formatStdDate_(r[1]), category: String(r[2] || ""),',
+          '      merchant: String(r[3] || ""), invoiceNo: String(r[4] || ""), items: String(r[5] || ""),',
+          '      amount: Number(r[6]) || 0, payer: String(r[7] || ""), sisterShare: Number(r[8]) || 0,',
           '      settled: String(r[9]) === "已結算" || String(r[9]) === "已結算收回",',
           '      driveUrl: String(r[10] || ""), settleNote: String(r[12] || "")',
-          '    });',
+          '    };',
           '  }',
-          '  const out = JSON.stringify({ status: "ok", records: records.reverse(), folderUrl: env.rootFolder.getUrl(), sheetUrl: env.ss.getUrl() });',
+          '  const records = order.map(id => recordsMap[id]).reverse();',
+          '  const out = JSON.stringify({ status: "ok", records: records, folderUrl: env.rootFolder.getUrl(), sheetUrl: env.ss.getUrl() });',
           '  if (e && e.parameter && e.parameter.callback) {',
           '    return ContentService.createTextOutput(e.parameter.callback + "(" + out + ")").setMimeType(ContentService.MimeType.JAVASCRIPT);',
           '  }',
@@ -2699,37 +2917,57 @@
           '    const data = JSON.parse(e.postData.contents);',
           '    const env = getOrCreateEnv_();',
           '    const sheet = env.sheet;',
+          '    const rows = sheet.getDataRange().getValues();',
+          '',
           '    if (data.action === "toggleSettle" || data.action === "delete") {',
-          '      const rows = sheet.getDataRange().getValues();',
-          '      for (let i = 1; i < rows.length; i++) {',
-          '        if (String(rows[i][0]) === String(data.id)) {',
+          '      for (let i = rows.length - 1; i >= 1; i--) {',
+          '        if (String(rows[i][0]).trim() === String(data.id).trim()) {',
           '          if (data.action === "toggleSettle") {',
           '            sheet.getRange(i + 1, 10).setValue(data.settled ? "已結算收回" : "代墊未結算");',
           '            if (data.settleNote !== undefined) sheet.getRange(i + 1, 13).setValue(data.settleNote);',
           '          } else if (data.action === "delete") {',
           '            sheet.deleteRow(i + 1);',
           '          }',
-          '          break;',
           '        }',
           '      }',
           '      return ContentService.createTextOutput(JSON.stringify({ status: "ok" })).setMimeType(ContentService.MimeType.JSON);',
           '    }',
+          '',
           '    const rec = data.record || data;',
+          '    const recId = String(rec.id || ("#" + (100 + sheet.getLastRow()))).trim();',
+          '    const stdDate = formatStdDate_(rec.date);',
           '    const imgBase64 = rec.imageData || rec.base64Image || "";',
-          '    let fileUrl = "";',
+          '    let fileUrl = rec.driveUrl || "";',
           '    if (imgBase64 && imgBase64.indexOf("base64,") !== -1) {',
           '      const sub = getSubFolder_(env.rootFolder, rec.category || CATEGORIES[4]);',
           '      const parts = imgBase64.split("base64,");',
           '      const bytes = Utilities.base64Decode(parts[1]);',
-          '      const blob = Utilities.newBlob(bytes, "image/jpeg", (rec.date || "單據") + "_" + (rec.merchant || "收據") + "_$" + (rec.amount || 0) + ".jpg");',
+          '      const blob = Utilities.newBlob(bytes, "image/jpeg", (stdDate || "單據") + "_" + (rec.merchant || "收據") + "_$" + (rec.amount || 0) + ".jpg");',
           '      fileUrl = sub.createFile(blob).getUrl();',
           '    }',
-          '    sheet.appendRow([',
-          '      rec.id || ("#" + (100 + sheet.getLastRow())), rec.date || "", rec.category || CATEGORIES[4],',
+          '',
+          '    // 檢查試算表是否已存在相同單據ID：若有則直接覆蓋原列並清除重複列，無則新增',
+          '    let matchedRows = [];',
+          '    for (let i = 1; i < rows.length; i++) {',
+          '      if (String(rows[i][0]).trim() === recId) matchedRows.push(i + 1);',
+          '    }',
+          '    if (!fileUrl && matchedRows.length > 0) {',
+          '      fileUrl = String(rows[matchedRows[0] - 1][10] || "");',
+          '    }',
+          '    const rowValues = [',
+          '      recId, "\'" + stdDate, rec.category || CATEGORIES[4],',
           '      rec.merchant || "", rec.invoiceNo || "", rec.items || "", Number(rec.amount) || 0,',
           '      rec.payer || "我(長子)代墊", Number(rec.sisterShare) || Math.round((Number(rec.amount) || 0) * 0.5),',
           '      rec.settled ? "已結算收回" : "代墊未結算", fileUrl, new Date().toLocaleString("zh-TW"), rec.settleNote || ""',
-          '    ]);',
+          '    ];',
+          '    if (matchedRows.length > 0) {',
+          '      sheet.getRange(matchedRows[0], 1, 1, 13).setValues([rowValues]);',
+          '      for (let k = matchedRows.length - 1; k >= 1; k--) {',
+          '        sheet.deleteRow(matchedRows[k]);',
+          '      }',
+          '    } else {',
+          '      sheet.appendRow(rowValues);',
+          '    }',
           '    return ContentService.createTextOutput(JSON.stringify({ status: "ok", driveUrl: fileUrl, folderUrl: env.rootFolder.getUrl(), sheetUrl: env.ss.getUrl() })).setMimeType(ContentService.MimeType.JSON);',
           '  } catch (err) {',
           '    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: err.toString() })).setMimeType(ContentService.MimeType.JSON);',
@@ -2761,6 +2999,15 @@
       // ==================== 8. 綁定所有事件與啟動流程 ====================
       async function initApp() {
         byId("formDate").value = new Date().toISOString().slice(0, 10);
+
+        // 支援從網址參數 ?gasUrl= 自動綁定雲端網址（方便跨手機/電腦免設定直接開啟）
+        try {
+          var urlParams = new URLSearchParams(window.location.search);
+          var paramGas = urlParams.get("gasUrl") || urlParams.get("gas");
+          if (paramGas && paramGas.indexOf("script.google.com") !== -1) {
+            localStorage.setItem(LS_GAS_URL, normalizeGasUrl(paramGas));
+          }
+        } catch (eParam) {}
 
         var savedGas = localStorage.getItem(LS_GAS_URL) || "";
         var savedKey = localStorage.getItem(LS_GEMINI_KEY) || "";
@@ -2827,6 +3074,25 @@
         byId("btnPushAllCloud").addEventListener("click", function() { pushAllUnsyncedRecords(); });
         byId("btnBatchPushInAlbum").addEventListener("click", function() { pushAllUnsyncedRecords(); });
         byId("btnPullCloud").addEventListener("click", function() { pullRecordsFromCloud(false); });
+        if (byId("btnCleanCloudDuplicates")) {
+          byId("btnCleanCloudDuplicates").addEventListener("click", function() {
+            cleanCloudDuplicatesAndFixDates();
+          });
+        }
+        if (byId("btnCopyCrossPlatformLink")) {
+          byId("btnCopyCrossPlatformLink").addEventListener("click", function() {
+            var gUrl = normalizeGasUrl(byId("inputGasUrl").value || localStorage.getItem(LS_GAS_URL) || "");
+            var base = window.location.origin + window.location.pathname;
+            var shareLink = gUrl ? (base + "?gasUrl=" + encodeURIComponent(gUrl)) : base;
+            var tempInput = document.createElement("input");
+            tempInput.value = shareLink;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempInput);
+            showToast("📱 已複製跨平台專屬連結！傳到手機或另一台電腦點開即自動載入雲端帳目！");
+          });
+        }
 
         var tabBtns = document.querySelectorAll(".main-tab-btn");
         for (var i = 0; i < tabBtns.length; i++) {
@@ -2922,10 +3188,36 @@
           var share = Math.round(amt * ratio);
           var chosenStatus = (byId("formShareStatus") && byId("formShareStatus").value) ? byId("formShareStatus").value : "代墊未結算";
           var chosenNote = (byId("formSettleNote") && byId("formSettleNote").value) ? cleanText(byId("formSettleNote").value) : "";
+          var cleanFormDate = normalizeDateString(byId("formDate").value) || new Date().toISOString().slice(0, 10);
+          var isEditingExisting = Boolean(editingId);
+
+          // 找出原本既有單據（若正在修正單據，保留原照片與雲端連結）
+          var prevExisting = null;
+          if (isEditingExisting) {
+            for (var k = 0; k < records.length; k++) {
+              if (records[k].id === editingId) {
+                prevExisting = records[k];
+                break;
+              }
+            }
+          }
+
+          // 產生唯一且不碰撞的單據 ID
+          var newUniqueId = editingId;
+          if (!newUniqueId) {
+            var maxSeq = 100 + records.length;
+            records.forEach(function(item) {
+              var m = String(item.id || "").match(/^#(\d+)/);
+              if (m && parseInt(m[1], 10) >= maxSeq) {
+                maxSeq = parseInt(m[1], 10) + 1;
+              }
+            });
+            newUniqueId = "#" + maxSeq + "-" + String(Math.floor(100 + Math.random() * 899));
+          }
 
           var recObj = {
-            id: editingId || ("#" + (101 + records.length) + "-" + String(Math.floor(100 + Math.random() * 899))),
-            date: byId("formDate").value || new Date().toISOString().slice(0, 10),
+            id: newUniqueId,
+            date: cleanFormDate,
             payer: byId("formPayer").value || "我(長子)代墊",
             category: byId("formCategory").value || "05_超市與市場膳食",
             merchant: cleanText(byId("formMerchant").value) || "媽媽照護支出",
@@ -2936,22 +3228,17 @@
             sisterShare: share,
             status: chosenStatus,
             settled: chosenStatus === "已結算收回",
-            settledAt: chosenStatus === "已結算收回" ? new Date().toISOString().slice(0, 10) : "",
+            settledAt: chosenStatus === "已結算收回" ? (prevExisting && prevExisting.settledAt ? prevExisting.settledAt : new Date().toISOString().slice(0, 10)) : "",
             settleNote: chosenNote,
-            photoUrl: watermarkedDataUrl || "",
-            drivePhotoUrl: "",
+            photoUrl: watermarkedDataUrl || (prevExisting ? prevExisting.photoUrl : ""),
+            drivePhotoUrl: prevExisting ? (prevExisting.drivePhotoUrl || "") : "",
             cloudSynced: false,
-            createdAt: new Date().toISOString()
+            createdAt: prevExisting && prevExisting.createdAt ? prevExisting.createdAt : new Date().toISOString()
           };
 
-          if (editingId) {
+          if (isEditingExisting) {
             records = records.map(function(item) {
-              if (item.id === editingId) {
-                recObj.photoUrl = watermarkedDataUrl || item.photoUrl || "";
-                recObj.drivePhotoUrl = item.drivePhotoUrl || "";
-                return recObj;
-              }
-              return item;
+              return item.id === editingId ? recObj : item;
             });
             editingId = null;
             byId("editingModeBadge").style.display = "none";
@@ -2960,6 +3247,8 @@
           } else {
             records.unshift(recObj);
           }
+
+          records = deduplicateAndNormalizeRecords(records);
 
           // 儲存後重置表單，方便連續拍攝下一張收據
           resetFormForNewReceiptScan();
@@ -2972,9 +3261,12 @@
 
           await saveRecordsPersistently();
           renderAllViews();
-          showToast("✅ 單據 " + recObj.id + " 已永久保存（狀態：" + (recObj.settled ? "✅ 已經分攤過" : "⏳ 尚未分攤") + "）！");
+          showToast(isEditingExisting
+            ? ("💾 單據 " + recObj.id + " 已覆蓋更新（日期：" + recObj.date + "），正在同步覆蓋雲端試算表...")
+            : ("✅ 單據 " + recObj.id + " 已永久保存（狀態：" + (recObj.settled ? "✅ 已經分攤過" : "⏳ 尚未分攤") + "）！"));
 
-          pushSingleRecordToCloud(recObj, true);
+          // 若為修正既有單據，傳入 isOverwriteExisting = true，確保雲端試算表先刪舊列再寫新列（不重複累積）
+          pushSingleRecordToCloud(recObj, true, isEditingExisting);
         });
 
         byId("btnCancelEdit").addEventListener("click", function() {
@@ -3170,10 +3462,15 @@
           readyBadge.textContent = "🟢 正式版已就緒（共 " + records.length + " 筆真實單據）";
         }
 
-        // 若已設定雲端網址，啟動時自動靜默同步一次
-        if (savedGas && savedGas.indexOf("/exec") !== -1) {
-          pullRecordsFromCloud(true);
-        }
+        // 啟動時無條件自動向 Vercel /api/cloud 或已綁定之 Google 雲端拉取最新單據（解決換手機/換電腦開啟需手動匯入的問題）
+        pullRecordsFromCloud(true);
+
+        // 當從其他裝置切換回本視窗時，自動在背景靜默同步最新雲端資料
+        document.addEventListener("visibilitychange", function() {
+          if (document.visibilityState === "visible") {
+            pullRecordsFromCloud(true);
+          }
+        });
       }
 
       if (document.readyState === "loading") {
